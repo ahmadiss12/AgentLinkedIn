@@ -4,6 +4,7 @@ import {
   reviewStatusSchema,
   sourceTypeSchema,
   topicCategorySchema,
+  topicTypeSchema,
 } from "@/core/content-models";
 import { riskLevelSchema } from "@/core/research-brief-models";
 
@@ -89,6 +90,7 @@ export const recentTopicSchema = z.object({
   title: z.string(),
   slug: z.string(),
   category: topicCategorySchema,
+  type: topicTypeSchema,
   status: reviewStatusSchema,
   relevanceScore: z.number().int().min(0).max(100),
   noveltyScore: z.number().int().min(0).max(100),

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { draftStatusSchema, topicCategorySchema } from "@/core/content-models";
+import { draftStatusSchema, topicCategorySchema, topicTypeSchema } from "@/core/content-models";
 import { researchBriefSchema } from "@/core/research-brief-models";
 
 export const draftGenerationSchema = z.object({
@@ -18,6 +18,7 @@ export const topicForDraftSchema = z.object({
   title: z.string(),
   slug: z.string(),
   category: topicCategorySchema,
+  type: topicTypeSchema,
   brief: researchBriefSchema,
 });
 

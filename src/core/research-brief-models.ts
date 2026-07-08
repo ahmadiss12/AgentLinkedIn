@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { topicCategorySchema } from "@/core/content-models";
+import { topicCategorySchema, topicTypeSchema } from "@/core/content-models";
 
 export const riskLevelSchema = z.enum(["low", "medium", "high"]);
 export type RiskLevel = z.infer<typeof riskLevelSchema>;
@@ -33,6 +33,7 @@ export const topicForBriefSchema = z.object({
   title: z.string(),
   slug: z.string(),
   category: topicCategorySchema,
+  type: topicTypeSchema,
   summary: z.string(),
   relevanceScore: z.number().int().min(0).max(100),
   lastSeenAt: z.date(),

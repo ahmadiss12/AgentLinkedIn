@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { DiscoveryRunPanel } from "@/components/discovery-run-panel";
+import { LearningIdeasPanel } from "@/components/learning-ideas-panel";
 import { RecentTopicsList } from "@/components/recent-topics-list";
 import { ResearchBriefPanel } from "@/components/research-brief-panel";
 import { PageHeading } from "@/components/page-heading";
@@ -70,8 +71,20 @@ export default async function TopicsPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div className="space-y-8">
           <DiscoveryRunPanel />
+          <LearningIdeasPanel />
           <ResearchBriefPanel />
-          <RecentTopicsList topics={recentTopics} />
+          <RecentTopicsList
+            topics={recentTopics.map((topic) => ({
+              id: topic.id,
+              title: topic.title,
+              category: topic.category,
+              type: topic.type,
+              status: topic.status,
+              relevanceScore: topic.relevanceScore,
+              riskLevel: topic.riskLevel,
+              sources: topic.sources,
+            }))}
+          />
         </div>
 
         <aside className="space-y-3">

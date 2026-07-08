@@ -11,6 +11,7 @@ type TopicReadyToDraft = {
   id: string;
   title: string;
   category: string;
+  type: string;
   brief: {
     whyItMatters: string;
     confidence: string;
@@ -82,6 +83,9 @@ export function TopicDraftQueue({ topics }: { topics: TopicReadyToDraft[] }) {
               <CardHeader>
                 <CardTitle className="text-base">{topic.title}</CardTitle>
                 <div className="flex flex-wrap gap-2 pt-2">
+                  <Badge variant={topic.type === "learning" ? "default" : "secondary"}>
+                    {topic.type === "learning" ? "learning" : "news"}
+                  </Badge>
                   <Badge variant="outline">{topic.category.replaceAll("_", " ")}</Badge>
                   <Badge variant={topic.brief.confidence === "high" ? "secondary" : "outline"}>
                     {topic.brief.confidence} confidence

@@ -23,6 +23,8 @@ export const topicCategorySchema = z.enum([
   "emerging_tech",
 ]);
 
+export const topicTypeSchema = z.enum(["news", "learning"]);
+
 export const reviewStatusSchema = z.enum([
   "discovered",
   "brief_ready",
@@ -64,6 +66,7 @@ export const contentFocusSchema = z.enum([
 ]);
 
 export type SourceType = z.infer<typeof sourceTypeSchema>;
+export type TopicType = z.infer<typeof topicTypeSchema>;
 export type TopicCategory = z.infer<typeof topicCategorySchema>;
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 export type DraftStatus = z.infer<typeof draftStatusSchema>;

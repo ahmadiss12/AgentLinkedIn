@@ -10,6 +10,12 @@ export type BriefEligibility =
   | { eligible: false; reason: string };
 
 export function checkBriefEligibility(topic: TopicForBrief): BriefEligibility {
+  // Learning topics are evergreen concepts taught from general engineering
+  // knowledge: they need no source material and never go stale.
+  if (topic.type === "learning") {
+    return { eligible: true };
+  }
+
   if (topic.sources.length === 0) {
     return { eligible: false, reason: "no linked source material to ground a brief" };
   }

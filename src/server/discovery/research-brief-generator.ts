@@ -4,7 +4,7 @@ import { z } from "zod";
 import { researchBriefSchema, type ResearchBrief, type TopicForBrief } from "@/core/research-brief-models";
 import { generateContentWithFallback } from "@/server/ai/generate-with-fallback";
 
-const SYSTEM_PROMPT = `You are a research analyst producing short, source-grounded technical briefs for a "trust but verify" LinkedIn content pipeline.
+const NEWS_SYSTEM_PROMPT = `You are a research analyst producing short, source-grounded technical briefs for a "trust but verify" LinkedIn content pipeline.
 Rules:
 - Base every claim ONLY on the provided source material. Never introduce facts, numbers, or context that are not present in the sources.
 - Every entry in "sourceAttributions" must reference one of the given source names and describe a claim that source actually supports.
@@ -13,11 +13,26 @@ Rules:
 - Do not speculate about outcomes the sources do not describe.
 - Respond with JSON only, matching the provided schema exactly.`;
 
+const LEARNING_SYSTEM_PROMPT = `You are a senior engineer preparing a teaching brief about a fundamental, well-established software engineering concept. This brief will later be turned into an educational LinkedIn post.
+Rules:
+- This is settled, textbook engineering knowledge — explain it from first principles. No news, no version numbers, no vendor announcements.
+- "technicalSummary": explain the concept in simple, concrete words. Structure it as: the problem developers face, then how the solution works step by step (use a request/data walking through the system as the running example when possible).
+- "whyItMatters": why a working engineer should care — what breaks or hurts without this.
+- "keyFacts": 4-6 short, standalone points: the core mechanics, the main trade-offs, and 1-2 practical rules of thumb (when to use it, when NOT to use it, common mistakes).
+- "sourceAttributions": leave as an empty array — this brief is based on general engineering knowledge, not specific articles.
+- "factualityNotes": one sentence stating this is established engineering fundamentals, and note anything that is opinion or context-dependent.
+- "warnings": empty unless part of the topic is genuinely contested or often taught wrong.
+- "confidence": "high" for settled fundamentals.
+- Use simple words. Avoid jargon without a one-phrase explanation.
+- Respond with JSON only, matching the provided schema exactly.`;
+
 const responseJsonSchema: Record<string, unknown> = z.toJSONSchema(researchBriefSchema);
 delete responseJsonSchema.$schema;
 
 export class ResearchBriefGenerator {
   async generate(topic: TopicForBrief): Promise<ResearchBrief> {
+    const isLearning = topic.type === "learning";
+
     const sourceBlock = topic.sources
       .map(
         (source, index) =>
@@ -27,11 +42,15 @@ export class ResearchBriefGenerator {
       )
       .join("\n\n");
 
+    const contents = isLearning
+      ? `Concept to teach: ${topic.title}\nCategory: ${topic.category}\nWhat the post should cover: ${topic.summary}\n\nWrite the teaching brief now.`
+      : `Topic: ${topic.title}\nCategory: ${topic.category}\nHeuristic summary: ${topic.summary}\n\nSource material:\n${sourceBlock}\n\nWrite the research brief now, grounded strictly in the source material above.`;
+
     const response = await generateContentWithFallback({
       model: "gemini-2.5-flash",
-      contents: `Topic: ${topic.title}\nCategory: ${topic.category}\nHeuristic summary: ${topic.summary}\n\nSource material:\n${sourceBlock}\n\nWrite the research brief now, grounded strictly in the source material above.`,
+      contents,
       config: {
-        systemInstruction: SYSTEM_PROMPT,
+        systemInstruction: isLearning ? LEARNING_SYSTEM_PROMPT : NEWS_SYSTEM_PROMPT,
         responseMimeType: "application/json",
         responseJsonSchema,
       },

@@ -7,11 +7,14 @@ import type {
 } from "@/core/discovery-models";
 import type { ResearchBrief, RiskLevel, TopicForBrief } from "@/core/research-brief-models";
 import type { SourceOverview } from "@/core/source-models";
+import type { LearningConcept } from "@/server/discovery/learning-catalog";
 
 export interface DiscoveryRepository {
   listSources(): Promise<TrustedSource[]>;
   listSourceOverviews(): Promise<SourceOverview[]>;
   setSourceEnabled(sourceId: string, enabled: boolean): Promise<void>;
+  insertLearningTopics(concepts: LearningConcept[]): Promise<{ id: string; title: string }[]>;
+  listUsedLearningSlugs(): Promise<string[]>;
   saveRun(result: DiscoveryRunResult): Promise<void>;
   listKnownTopicFingerprints(limit: number): Promise<
     { slug: string; title: string; summary: string }[]

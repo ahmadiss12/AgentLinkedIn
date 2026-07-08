@@ -38,6 +38,7 @@ export class PostgresDraftRepository implements DraftRepository {
         title: topics.title,
         slug: topics.slug,
         category: topics.category,
+        type: topics.type,
         brief: topics.brief,
       })
       .from(topics)
@@ -52,6 +53,7 @@ export class PostgresDraftRepository implements DraftRepository {
         title: row.title,
         slug: row.slug,
         category: row.category,
+        type: row.type,
         brief: row.brief!,
       }));
   }
@@ -63,6 +65,7 @@ export class PostgresDraftRepository implements DraftRepository {
         title: topics.title,
         slug: topics.slug,
         category: topics.category,
+        type: topics.type,
         brief: topics.brief,
       })
       .from(topics)
@@ -80,7 +83,14 @@ export class PostgresDraftRepository implements DraftRepository {
       return null;
     }
 
-    return { id: row.id, title: row.title, slug: row.slug, category: row.category, brief: row.brief };
+    return {
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      category: row.category,
+      type: row.type,
+      brief: row.brief,
+    };
   }
 
   async getOrCreateDefaultUser() {
@@ -180,6 +190,7 @@ export class PostgresDraftRepository implements DraftRepository {
         },
         topicBrief: topics.brief,
         topicSlug: topics.slug,
+        topicType: topics.type,
       })
       .from(drafts)
       .innerJoin(topics, eq(drafts.topicId, topics.id))
@@ -197,6 +208,7 @@ export class PostgresDraftRepository implements DraftRepository {
         title: row.draft.topicTitle,
         slug: row.topicSlug,
         category: row.draft.topicCategory,
+        type: row.topicType,
         brief: row.topicBrief,
       },
     };

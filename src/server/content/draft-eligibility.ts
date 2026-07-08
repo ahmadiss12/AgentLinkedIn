@@ -14,7 +14,9 @@ export function checkDraftEligibility(topic: TopicForDraft): DraftEligibility {
     };
   }
 
-  if (topic.brief.sourceAttributions.length === 0) {
+  // Learning briefs are written from general engineering knowledge and
+  // intentionally carry no source attributions.
+  if (topic.type !== "learning" && topic.brief.sourceAttributions.length === 0) {
     return { eligible: false, reason: "brief has no source attributions to draft from" };
   }
 

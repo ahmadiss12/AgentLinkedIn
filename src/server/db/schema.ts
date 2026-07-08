@@ -69,6 +69,7 @@ export const draftStatusEnum = pgEnum("draft_status", [
 ]);
 
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
+export const topicTypeEnum = pgEnum("topic_type", ["news", "learning"]);
 export const scheduledStatusEnum = pgEnum("scheduled_status", [
   "queued",
   "posting",
@@ -187,6 +188,7 @@ export const topics = pgTable(
     summary: text("summary").notNull(),
     whyItMatters: text("why_it_matters"),
     category: topicCategoryEnum("category").notNull(),
+    type: topicTypeEnum("type").notNull().default("news"),
     status: reviewStatusEnum("status").notNull().default("discovered"),
     relevanceScore: integer("relevance_score").notNull().default(0),
     noveltyScore: integer("novelty_score").notNull().default(0),

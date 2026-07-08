@@ -25,6 +25,14 @@ export class SeedDiscoveryRepository implements DiscoveryRepository {
     throw new Error("Connect a database to enable or disable sources.");
   }
 
+  async insertLearningTopics(): Promise<{ id: string; title: string }[]> {
+    throw new Error("Connect a database to add learning topics.");
+  }
+
+  async listUsedLearningSlugs() {
+    return [];
+  }
+
   async saveRun() {
     return;
   }

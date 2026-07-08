@@ -40,7 +40,7 @@ const DEFAULT_STYLE: DraftStyle = {
   contentFocus: "advanced_technical",
 };
 
-function buildSystemPrompt(style: DraftStyle) {
+function buildNewsSystemPrompt(style: DraftStyle) {
   return `You are a technical writer drafting a LinkedIn post for a software engineer's personal account.
 Rules:
 - Base the post ONLY on the provided research brief. Do not introduce facts, numbers, or claims that are not in the brief's key facts or source attributions.
@@ -54,6 +54,24 @@ Rules:
 - "angle" is a short label describing the approach this draft takes (e.g. "practical engineering lesson", "why this matters for platform teams").
 - "alternateAngles" is 2-3 short alternative angle ideas (not full drafts) that were not used, in case the user wants a regenerate with a different take.
 - If the brief carries warnings about weak sourcing or speculation, either soften the framing accordingly or reflect that uncertainty honestly — never state something as certain that the brief flags as uncertain.
+- Respond with JSON only, matching the provided schema exactly.`;
+}
+
+function buildLearningSystemPrompt(style: DraftStyle) {
+  return `You are a senior engineer writing an educational LinkedIn post that teaches one engineering concept simply — the kind of post developers save and share.
+Rules:
+- Teach ONLY what is in the provided teaching brief. Keep every claim accurate to it.
+- Tone of voice: ${style.tone}. Simple words, short sentences. A junior developer should understand every line.
+- "hook" is the first 1-2 lines: name the concept and the everyday pain it solves, concretely (e.g. "Your app hits the database on every single request — even when the data barely changes."). Not a question, not clickbait.
+- "body" MUST follow this teaching structure:
+  1. "The problem:" — 2-3 sentences describing the pain in a real system.
+  2. "The solution:" — explain how it works step by step. Where a flow exists, show it as short arrow lines, each on its own line, starting with "→" (e.g. "→ Request comes in → check the cache first").
+  3. End with "Rule of thumb:" — 1-2 sentences of practical advice: when to use it, when not to, or the classic mistake to avoid.
+- Blank line between sections. At most 1-2 fitting emoji in the whole post (optional, never more).
+- Keep the whole post to ${LENGTH_GUIDE[style.postLength]}; going slightly over is fine if the explanation needs it.
+- "hashtags" is ${HASHTAG_GUIDE[style.hashtagStyle]} lowercase words or camelCase phrases, no "#" symbol, no spaces.
+- "angle" is a short label like "explained simply" or "fundamentals for working engineers".
+- "alternateAngles" is 2-3 short alternative teaching angles (e.g. "common mistakes version", "real incident story version").
 - Respond with JSON only, matching the provided schema exactly.`;
 }
 
@@ -74,12 +92,19 @@ export class DraftGenerator {
     const angleInstruction = options?.avoidAngle
       ? `\n\nA previous draft already used this angle: "${options.avoidAngle}". Take a genuinely different angle this time — do not reuse it or a close variant of it.`
       : "";
+    const isLearning = topic.type === "learning";
+
+    const contents = isLearning
+      ? `Concept: ${topic.title}\nCategory: ${topic.category}\n\nTeaching brief:\n${topic.brief.technicalSummary}\n\nWhy it matters:\n${topic.brief.whyItMatters}\n\nKey points:\n${keyFacts}${angleInstruction}\n\nWrite the educational LinkedIn post now.`
+      : `Topic: ${topic.title}\nCategory: ${topic.category}\n\nResearch brief:\n${topic.brief.technicalSummary}\n\nWhy it matters:\n${topic.brief.whyItMatters}\n\nKey facts:\n${keyFacts}\n\nSource attributions:\n${attributions}\n\nWarnings: ${warnings}\nConfidence: ${topic.brief.confidence}${angleInstruction}\n\nWrite the LinkedIn draft now.`;
 
     const response = await generateContentWithFallback({
       model: "gemini-2.5-flash",
-      contents: `Topic: ${topic.title}\nCategory: ${topic.category}\n\nResearch brief:\n${topic.brief.technicalSummary}\n\nWhy it matters:\n${topic.brief.whyItMatters}\n\nKey facts:\n${keyFacts}\n\nSource attributions:\n${attributions}\n\nWarnings: ${warnings}\nConfidence: ${topic.brief.confidence}${angleInstruction}\n\nWrite the LinkedIn draft now.`,
+      contents,
       config: {
-        systemInstruction: buildSystemPrompt(style),
+        systemInstruction: isLearning
+          ? buildLearningSystemPrompt(style)
+          : buildNewsSystemPrompt(style),
         responseMimeType: "application/json",
         responseJsonSchema,
       },

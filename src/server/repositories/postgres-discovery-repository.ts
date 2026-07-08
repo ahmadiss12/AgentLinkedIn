@@ -9,6 +9,7 @@ import {
   MIN_RELEVANCE_SCORE,
   STALE_AFTER_DAYS,
 } from "@/server/discovery/brief-eligibility";
+import type { LearningConcept } from "@/server/discovery/learning-catalog";
 import { trustedSourceCatalog } from "@/server/discovery/source-catalog";
 import type { getDb } from "@/server/db/client";
 import {
@@ -227,6 +228,46 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     }
   }
 
+  async insertLearningTopics(concepts: LearningConcept[]) {
+    const created: { id: string; title: string }[] = [];
+
+    for (const concept of concepts) {
+      // Slug conflict means this concept was already suggested before —
+      // skip it silently so the caller can offer fresh ideas only.
+      const [inserted] = await this.db
+        .insert(topics)
+        .values({
+          title: concept.title,
+          slug: concept.slug,
+          summary: concept.summary,
+          whyItMatters: null,
+          category: concept.category,
+          type: "learning",
+          status: "discovered",
+          relevanceScore: 75,
+          noveltyScore: 60,
+          riskLevel: "low",
+        })
+        .onConflictDoNothing({ target: topics.slug })
+        .returning({ id: topics.id, title: topics.title });
+
+      if (inserted) {
+        created.push(inserted);
+      }
+    }
+
+    return created;
+  }
+
+  async listUsedLearningSlugs(): Promise<string[]> {
+    const rows = await this.db
+      .select({ slug: topics.slug })
+      .from(topics)
+      .where(eq(topics.type, "learning"));
+
+    return rows.map((row) => row.slug);
+  }
+
   async listKnownTopicFingerprints(limit: number) {
     return this.db
       .select({
@@ -246,6 +287,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         title: topics.title,
         slug: topics.slug,
         category: topics.category,
+        type: topics.type,
         status: topics.status,
         relevanceScore: topics.relevanceScore,
         noveltyScore: topics.noveltyScore,
@@ -298,6 +340,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         title: topics.title,
         slug: topics.slug,
         category: topics.category,
+        type: topics.type,
         summary: topics.summary,
         relevanceScore: topics.relevanceScore,
         lastSeenAt: topics.lastSeenAt,
@@ -363,6 +406,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
       title: row.title,
       slug: row.slug,
       category: row.category,
+      type: row.type,
       summary: row.summary,
       relevanceScore: row.relevanceScore,
       lastSeenAt: row.lastSeenAt,
