@@ -396,6 +396,8 @@ export const notifications = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("general"),
+    refId: uuid("ref_id"),
     title: text("title").notNull(),
     body: text("body").notNull(),
     status: notificationStatusEnum("status").notNull().default("unread"),
@@ -408,6 +410,11 @@ export const notifications = pgTable(
       table.userId,
       table.status,
     ),
+    // One notification per event: e.g. a scheduled post only ever
+    // produces a single "post due" notification.
+    kindRefIdx: uniqueIndex("notifications_kind_ref_idx")
+      .on(table.kind, table.refId)
+      .where(sql`${table.refId} IS NOT NULL`),
   }),
 );
 

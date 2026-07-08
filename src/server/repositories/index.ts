@@ -4,8 +4,11 @@ import { getDb, hasDatabaseUrl } from "@/server/db/client";
 import type { ContentRepository } from "@/server/repositories/content-repository";
 import type { DiscoveryRepository } from "@/server/repositories/discovery-repository";
 import type { DraftRepository } from "@/server/repositories/draft-repository";
+import type { NotificationRepository } from "@/server/repositories/notification-repository";
 import type { ScheduleRepository } from "@/server/repositories/schedule-repository";
 import type { SettingsRepository } from "@/server/repositories/settings-repository";
+import { PostgresNotificationRepository } from "@/server/repositories/postgres-notification-repository";
+import { SeedNotificationRepository } from "@/server/repositories/seed-notification-repository";
 import { PostgresContentRepository } from "@/server/repositories/postgres-content-repository";
 import { PostgresDiscoveryRepository } from "@/server/repositories/postgres-discovery-repository";
 import { PostgresDraftRepository } from "@/server/repositories/postgres-draft-repository";
@@ -55,4 +58,12 @@ export function createSettingsRepository(): SettingsRepository {
   }
 
   return new PostgresSettingsRepository(getDb());
+}
+
+export function createNotificationRepository(): NotificationRepository {
+  if (!hasDatabaseUrl()) {
+    return new SeedNotificationRepository();
+  }
+
+  return new PostgresNotificationRepository(getDb());
 }

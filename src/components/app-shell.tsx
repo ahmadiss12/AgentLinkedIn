@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Bot, ShieldCheck } from "lucide-react";
 import { MobileNav } from "@/components/mobile-nav";
+import { NotificationsBell } from "@/components/notifications-bell";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -44,7 +45,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Badge className="hidden sm:inline-flex" variant="outline">
               Manual publishing
             </Badge>
-            <Badge variant="secondary">Approval required</Badge>
+            <Badge className="hidden sm:inline-flex" variant="secondary">
+              Approval required
+            </Badge>
+            <NotificationsBell />
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 lg:px-8">
