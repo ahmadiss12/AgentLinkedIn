@@ -415,7 +415,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
   }
 
   async saveBrief(topicId: string, brief: ResearchBrief, riskLevel: RiskLevel) {
-    await this.db
+    const [updated] = await this.db
       .update(topics)
       .set({
         summary: brief.technicalSummary,
@@ -425,7 +425,14 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         riskLevel,
         updatedAt: sql`now()`,
       })
-      .where(eq(topics.id, topicId));
+      .where(eq(topics.id, topicId))
+      .returning({ type: topics.type });
+
+    // Source-quality checks only make sense for news briefs — learning
+    // briefs are knowledge-based and intentionally have no sources.
+    if (updated?.type === "learning") {
+      return;
+    }
 
     const signals: QualitySignal[] =
       brief.confidence === "high" && brief.warnings.length === 0

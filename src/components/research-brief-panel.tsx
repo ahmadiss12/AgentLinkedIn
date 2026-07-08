@@ -56,8 +56,8 @@ export function ResearchBriefPanel() {
         <div>
           <h2 className="text-lg font-semibold">AI research briefs</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Turn the strongest discovered topics into source-grounded briefs, skipping stale or
-            weakly-scored candidates.
+            Turn discovered topics into briefs: news gets source-grounded research, learning
+            concepts get a teaching brief. Stale or weakly-scored news is skipped.
           </p>
         </div>
         <Button disabled={isRunning} onClick={runBriefs}>
