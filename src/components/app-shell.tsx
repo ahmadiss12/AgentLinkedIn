@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Bot, ShieldCheck } from "lucide-react";
+import { LogoutButton } from "@/components/logout-button";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { SidebarNav } from "@/components/sidebar-nav";
@@ -49,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               Approval required
             </Badge>
             <NotificationsBell />
+            {process.env.APP_PASSWORD ? <LogoutButton /> : null}
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 lg:px-8">
