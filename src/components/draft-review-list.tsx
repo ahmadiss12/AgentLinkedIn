@@ -9,6 +9,7 @@ import {
   CalendarClock,
   Loader2,
   RefreshCw,
+  Search,
   ThumbsDown,
   ThumbsUp,
   Pencil,
@@ -71,6 +72,7 @@ const FILTERS: { value: string; label: string }[] = [
 export function DraftReviewList({ drafts }: { drafts: DraftForReview[] }) {
   const router = useRouter();
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -85,8 +87,22 @@ export function DraftReviewList({ drafts }: { drafts: DraftForReview[] }) {
     return counts;
   }, [drafts]);
 
-  const visibleDrafts =
-    filter === "all" ? drafts : drafts.filter((draft) => draft.status === filter);
+  const visibleDrafts = drafts.filter((draft) => {
+    if (filter !== "all" && draft.status !== filter) {
+      return false;
+    }
+
+    if (search.trim()) {
+      const needle = search.trim().toLowerCase();
+      return (
+        draft.title.toLowerCase().includes(needle) ||
+        draft.topicTitle.toLowerCase().includes(needle) ||
+        draft.body.toLowerCase().includes(needle)
+      );
+    }
+
+    return true;
+  });
 
   async function callAction(draftId: string, action: string, body?: unknown) {
     setPendingId(draftId);
@@ -166,7 +182,16 @@ export function DraftReviewList({ drafts }: { drafts: DraftForReview[] }) {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="w-64 pl-8"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search drafts…"
+            value={search}
+          />
+        </div>
         {FILTERS.map((item) => {
           const count =
             item.value === "all" ? drafts.length : (countByStatus[item.value] ?? 0);
@@ -208,7 +233,7 @@ export function DraftReviewList({ drafts }: { drafts: DraftForReview[] }) {
       ) : visibleDrafts.length === 0 ? (
         <Card className="rounded-md">
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            No drafts with this status right now.
+            No drafts match your search or filter.
           </CardContent>
         </Card>
       ) : (

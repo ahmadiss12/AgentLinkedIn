@@ -9,6 +9,7 @@ import { createDiscoveryRepository } from "@/server/repositories";
 
 export type RunBriefsOptions = {
   maxTopics?: number;
+  topicId?: string;
 };
 
 export type BriefRunResult = {
@@ -44,7 +45,6 @@ export class ResearchBriefService {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
 
-    const candidates = await this.repository.listTopicsPendingBrief(maxTopics);
     const result: BriefRunResult = {
       runId: randomUUID(),
       startedAt,
@@ -53,6 +53,23 @@ export class ResearchBriefService {
       skipped: [],
       errors: [],
     };
+
+    let candidates;
+
+    if (options.topicId) {
+      const topic = await this.repository.getTopicPendingBrief(options.topicId);
+      candidates = topic ? [topic] : [];
+
+      if (!topic) {
+        result.errors.push({
+          topicId: options.topicId,
+          title: options.topicId,
+          message: "Topic is not waiting for a brief (already briefed, or not found).",
+        });
+      }
+    } else {
+      candidates = await this.repository.listTopicsPendingBrief(maxTopics);
+    }
 
     for (const topic of candidates) {
       const eligibility = checkBriefEligibility(topic);

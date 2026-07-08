@@ -115,4 +115,38 @@ export const trustedSourceCatalog: TrustedSource[] = [
     trustLevel: 4,
     categories: ["programming_languages", "open_source"],
   },
+  // Learning feeds: sites that publish evergreen teaching content. Their
+  // items become "learning" topics with the educational draft style.
+  {
+    name: "Julia Evans",
+    url: "https://jvns.ca/atom.xml",
+    type: "engineering_blog",
+    trustLevel: 5,
+    categories: ["software_engineering", "computer_science", "developer_tools"],
+    contentType: "learning",
+  },
+  {
+    name: "ByteByteGo",
+    url: "https://blog.bytebytego.com/feed",
+    type: "newsletter",
+    trustLevel: 4,
+    categories: ["software_engineering", "computer_science", "cloud_computing"],
+    contentType: "learning",
+  },
+  {
+    name: "Martin Fowler",
+    url: "https://martinfowler.com/feed.atom",
+    type: "engineering_blog",
+    trustLevel: 5,
+    categories: ["software_engineering"],
+    contentType: "learning",
+  },
+  {
+    name: "freeCodeCamp",
+    url: "https://www.freecodecamp.org/news/rss/",
+    type: "technical_news",
+    trustLevel: 4,
+    categories: ["software_engineering", "developer_tools", "programming_languages"],
+    contentType: "learning",
+  },
 ];

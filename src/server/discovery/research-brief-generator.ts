@@ -13,14 +13,14 @@ Rules:
 - Do not speculate about outcomes the sources do not describe.
 - Respond with JSON only, matching the provided schema exactly.`;
 
-const LEARNING_SYSTEM_PROMPT = `You are a senior engineer preparing a teaching brief about a fundamental, well-established software engineering concept. This brief will later be turned into an educational LinkedIn post.
+const LEARNING_SYSTEM_PROMPT = `You are a senior engineer preparing a teaching brief about a software engineering concept. This brief will later be turned into an educational LinkedIn post.
 Rules:
-- This is settled, textbook engineering knowledge — explain it from first principles. No news, no version numbers, no vendor announcements.
+- Teach established engineering knowledge from first principles. No news framing, no version numbers, no vendor announcements.
+- If source material is provided, use it as the base for what to teach: follow its main lesson and examples, and attribute it in "sourceAttributions" (sourceName + the claim taken from it). If no source material is provided, write from general engineering knowledge and leave "sourceAttributions" as an empty array.
 - "technicalSummary": explain the concept in simple, concrete words. Structure it as: the problem developers face, then how the solution works step by step (use a request/data walking through the system as the running example when possible).
 - "whyItMatters": why a working engineer should care — what breaks or hurts without this.
 - "keyFacts": 4-6 short, standalone points: the core mechanics, the main trade-offs, and 1-2 practical rules of thumb (when to use it, when NOT to use it, common mistakes).
-- "sourceAttributions": leave as an empty array — this brief is based on general engineering knowledge, not specific articles.
-- "factualityNotes": one sentence stating this is established engineering fundamentals, and note anything that is opinion or context-dependent.
+- "factualityNotes": one sentence on what this is based on (established fundamentals and/or the provided article), noting anything that is opinion or context-dependent.
 - "warnings": empty unless part of the topic is genuinely contested or often taught wrong.
 - "confidence": "high" for settled fundamentals.
 - Use simple words. Avoid jargon without a one-phrase explanation.
@@ -42,8 +42,10 @@ export class ResearchBriefGenerator {
       )
       .join("\n\n");
 
+    const learningSourceBlock =
+      topic.sources.length > 0 ? `\n\nSource material to teach from:\n${sourceBlock}` : "";
     const contents = isLearning
-      ? `Concept to teach: ${topic.title}\nCategory: ${topic.category}\nWhat the post should cover: ${topic.summary}\n\nWrite the teaching brief now.`
+      ? `Concept to teach: ${topic.title}\nCategory: ${topic.category}\nWhat the post should cover: ${topic.summary}${learningSourceBlock}\n\nWrite the teaching brief now.`
       : `Topic: ${topic.title}\nCategory: ${topic.category}\nHeuristic summary: ${topic.summary}\n\nSource material:\n${sourceBlock}\n\nWrite the research brief now, grounded strictly in the source material above.`;
 
     const response = await generateContentWithFallback({

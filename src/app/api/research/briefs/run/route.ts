@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 const requestSchema = z.object({
   maxTopics: z.number().int().min(1).max(10).optional(),
+  topicId: z.string().uuid().optional(),
 });
 
 export async function POST(request: Request) {

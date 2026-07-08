@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type TopicSourceLink = {
@@ -37,12 +40,16 @@ const STATUS_LABEL: Record<string, string> = {
 
 const TYPE_FILTERS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "news", label: "News" },
   { value: "learning", label: "Learning" },
+  { value: "news", label: "News" },
 ];
 
 export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
+  const router = useRouter();
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [briefingId, setBriefingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const countByType = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -52,20 +59,70 @@ export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
     return counts;
   }, [topics]);
 
-  const visibleTopics =
-    filter === "all" ? topics : topics.filter((topic) => topic.type === filter);
+  const visibleTopics = topics.filter((topic) => {
+    if (filter !== "all" && topic.type !== filter) {
+      return false;
+    }
+
+    if (search.trim()) {
+      return topic.title.toLowerCase().includes(search.trim().toLowerCase());
+    }
+
+    return true;
+  });
+
+  async function generateBrief(topicId: string) {
+    setBriefingId(topicId);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/research/briefs/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ topicId }),
+      });
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json.error ?? `Brief generation failed with status ${response.status}`);
+      }
+
+      if (json.errors?.length > 0) {
+        throw new Error(json.errors[0].message);
+      }
+
+      if (json.skipped?.length > 0) {
+        throw new Error(json.skipped[0].reason);
+      }
+
+      router.refresh();
+    } catch (briefError) {
+      setError(briefError instanceof Error ? briefError.message : "Failed to generate brief.");
+    } finally {
+      setBriefingId(null);
+    }
+  }
 
   return (
     <section className="space-y-3">
       <div>
         <h2 className="text-lg font-semibold">Recent topics</h2>
         <p className="text-sm leading-6 text-muted-foreground">
-          Everything the agent has collected: news found by discovery, and learning concepts
-          you asked for. Filter by what you feel like posting.
+          Everything the agent has collected. Search or filter, then generate a brief for any
+          topic directly — no need to wait for it to be picked by score.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="w-64 pl-8"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search topics…"
+            value={search}
+          />
+        </div>
         {TYPE_FILTERS.map((item) => {
           const count =
             item.value === "all" ? topics.length : (countByType[item.value] ?? 0);
@@ -89,6 +146,15 @@ export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
         })}
       </div>
 
+      {error ? (
+        <Card className="rounded-md border-destructive/40">
+          <CardContent className="flex items-center gap-2 pt-6 text-sm text-destructive">
+            <AlertTriangle className="size-4" />
+            {error}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {topics.length === 0 ? (
         <Card className="rounded-md">
           <CardContent className="pt-6 text-sm text-muted-foreground">
@@ -98,9 +164,7 @@ export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
       ) : visibleTopics.length === 0 ? (
         <Card className="rounded-md">
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            {filter === "learning"
-              ? "No learning topics yet — use the Learning topics panel above to get ideas."
-              : "No news topics yet — run discovery above."}
+            No topics match your search or filter.
           </CardContent>
         </Card>
       ) : (
@@ -123,8 +187,8 @@ export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
                   ) : null}
                 </div>
               </CardHeader>
-              {topic.sources.length > 0 ? (
-                <CardContent className="pt-0">
+              <CardContent className="space-y-2 pt-0">
+                {topic.sources.length > 0 ? (
                   <ul className="space-y-1">
                     {topic.sources.map((source) => (
                       <li key={source.url}>
@@ -142,8 +206,23 @@ export function RecentTopicsList({ topics }: { topics: RecentTopic[] }) {
                       </li>
                     ))}
                   </ul>
-                </CardContent>
-              ) : null}
+                ) : null}
+                {topic.status === "discovered" ? (
+                  <Button
+                    disabled={briefingId === topic.id}
+                    onClick={() => generateBrief(topic.id)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {briefingId === topic.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Generate brief
+                  </Button>
+                ) : null}
+              </CardContent>
             </Card>
           ))}
         </div>

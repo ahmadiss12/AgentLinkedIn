@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Loader2, PenSquare } from "lucide-react";
+import { AlertTriangle, Loader2, PenSquare, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 type TopicReadyToDraft = {
   id: string;
@@ -22,7 +23,14 @@ type TopicReadyToDraft = {
 export function TopicDraftQueue({ topics }: { topics: TopicReadyToDraft[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const visibleTopics = search.trim()
+    ? topics.filter((topic) =>
+        topic.title.toLowerCase().includes(search.trim().toLowerCase()),
+      )
+    : topics;
 
   async function generate(topicId: string) {
     setPendingId(topicId);
@@ -57,8 +65,19 @@ export function TopicDraftQueue({ topics }: { topics: TopicReadyToDraft[] }) {
       <div>
         <h2 className="text-lg font-semibold">Ready to draft</h2>
         <p className="text-sm leading-6 text-muted-foreground">
-          Topics with a research brief. Pick one to draft — nothing is auto-selected.
+          Topics with a research brief, learning topics first. Pick one to draft — nothing is
+          auto-selected.
         </p>
+      </div>
+
+      <div className="relative w-64">
+        <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-8"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search briefed topics…"
+          value={search}
+        />
       </div>
 
       {error ? (
@@ -76,9 +95,15 @@ export function TopicDraftQueue({ topics }: { topics: TopicReadyToDraft[] }) {
             No briefed topics are waiting to be drafted right now.
           </CardContent>
         </Card>
+      ) : visibleTopics.length === 0 ? (
+        <Card className="rounded-md">
+          <CardContent className="pt-6 text-sm text-muted-foreground">
+            No briefed topics match your search.
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-3 xl:grid-cols-2">
-          {topics.map((topic) => (
+          {visibleTopics.map((topic) => (
             <Card className="rounded-md" key={topic.id}>
               <CardHeader>
                 <CardTitle className="text-base">{topic.title}</CardTitle>

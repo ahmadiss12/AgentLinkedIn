@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, notInArray, or, sql } from "drizzle-orm";
 import type { DiscoveryRunResult, RecentTopic } from "@/core/discovery-models";
 import type { TrustedSource } from "@/core/discovery-models";
 import type { ResearchBrief, RiskLevel, TopicForBrief } from "@/core/research-brief-models";
@@ -51,6 +51,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         type: row.type,
         trustLevel: row.trustLevel,
         categories: catalogItem?.categories ?? ["software_engineering"],
+        contentType: catalogItem?.contentType,
       } satisfies TrustedSource;
     });
   }
@@ -182,6 +183,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
           summary: candidate.summary,
           whyItMatters: candidate.whyItMatters,
           category: candidate.category,
+          type: candidate.contentType,
           status: "discovered",
           relevanceScore: candidate.relevanceScore,
           noveltyScore: candidate.noveltyScore,
@@ -349,8 +351,15 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
       .where(
         and(
           eq(topics.status, "discovered"),
-          gte(topics.relevanceScore, MIN_RELEVANCE_SCORE),
-          gte(topics.lastSeenAt, staleCutoff),
+          // Relevance and staleness gates only apply to news — learning
+          // topics are evergreen and always brief-worthy.
+          or(
+            eq(topics.type, "learning"),
+            and(
+              gte(topics.relevanceScore, MIN_RELEVANCE_SCORE),
+              gte(topics.lastSeenAt, staleCutoff),
+            ),
+          ),
           // Topics whose most recent quality check flagged duplicate risk
           // should not consume brief-generation slots.
           sql`NOT EXISTS (
@@ -364,7 +373,12 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
           )`,
         ),
       )
-      .orderBy(desc(topics.relevanceScore))
+      // Learning topics take priority over news regardless of relevance
+      // score — evergreen teaching content is the primary focus.
+      .orderBy(
+        sql`CASE WHEN ${topics.type} = 'learning' THEN 0 ELSE 1 END`,
+        desc(topics.relevanceScore),
+      )
       .limit(limit);
 
     if (rows.length === 0) {
@@ -412,6 +426,49 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
       lastSeenAt: row.lastSeenAt,
       sources: sourcesByTopic.get(row.id) ?? [],
     }));
+  }
+
+  async getTopicPendingBrief(topicId: string): Promise<TopicForBrief | null> {
+    const [row] = await this.db
+      .select({
+        id: topics.id,
+        title: topics.title,
+        slug: topics.slug,
+        category: topics.category,
+        type: topics.type,
+        summary: topics.summary,
+        relevanceScore: topics.relevanceScore,
+        lastSeenAt: topics.lastSeenAt,
+      })
+      .from(topics)
+      .where(and(eq(topics.id, topicId), eq(topics.status, "discovered")))
+      .limit(1);
+
+    if (!row) {
+      return null;
+    }
+
+    const sourceRows = await this.db
+      .select({
+        sourceName: sources.name,
+        title: sourceItems.title,
+        url: sourceItems.url,
+        summary: sourceItems.summary,
+      })
+      .from(topicSources)
+      .innerJoin(sourceItems, eq(topicSources.sourceItemId, sourceItems.id))
+      .innerJoin(sources, eq(sourceItems.sourceId, sources.id))
+      .where(eq(topicSources.topicId, topicId));
+
+    return {
+      ...row,
+      sources: sourceRows.map((source) => ({
+        sourceName: source.sourceName,
+        title: source.title,
+        url: source.url,
+        summary: source.summary ?? undefined,
+      })),
+    };
   }
 
   async saveBrief(topicId: string, brief: ResearchBrief, riskLevel: RiskLevel) {

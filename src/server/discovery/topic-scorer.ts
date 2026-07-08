@@ -123,7 +123,7 @@ export class TopicScorer {
   scoreItems(items: NormalizedSourceItem[], limit: number) {
     const seen = new Set<string>();
 
-    return items
+    const ranked = items
       .map((item) => this.scoreItem(item))
       .sort((left, right) => {
         if (right.relevanceScore !== left.relevanceScore) {
@@ -139,8 +139,22 @@ export class TopicScorer {
 
         seen.add(candidate.slug);
         return true;
-      })
-      .slice(0, limit);
+      });
+
+    // News is fresher so it outscores evergreen teaching articles; without
+    // a reserved share, learning items never make the candidate list.
+    // Give learning at least half the slots whenever it has entries.
+    const learningQuota = Math.ceil(limit / 2);
+    const learning = ranked
+      .filter((candidate) => candidate.contentType === "learning")
+      .slice(0, learningQuota);
+    const rest = ranked
+      .filter((candidate) => !learning.includes(candidate))
+      .slice(0, limit - learning.length);
+
+    return [...learning, ...rest].sort(
+      (left, right) => right.relevanceScore - left.relevanceScore,
+    );
   }
 
   private scoreItem(item: NormalizedSourceItem): DiscoveryCandidate {
@@ -160,7 +174,8 @@ export class TopicScorer {
     const noveltyScore = clamp(90 - Math.min(freshnessDays * 2, 50), 0, 100);
     const warnings = [
       ...(!item.publishedAt ? ["missing publication date"] : []),
-      ...(freshnessDays > 21 ? ["possibly stale"] : []),
+      // Evergreen teaching content doesn't go stale like news does.
+      ...(freshnessDays > 21 && item.contentType !== "learning" ? ["possibly stale"] : []),
       ...(item.sourceTrustLevel < 4 ? ["lower-trust source"] : []),
       ...(matchedSignals.length === 0 ? ["weak topic match"] : []),
     ];
@@ -175,6 +190,7 @@ export class TopicScorer {
       sourceName: item.sourceName,
       sourceUrl: item.sourceUrl,
       sourceType: item.sourceType,
+      contentType: item.contentType,
       category,
       publishedAt: item.publishedAt,
       fetchedAt: item.fetchedAt,

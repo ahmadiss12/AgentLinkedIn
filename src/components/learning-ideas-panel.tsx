@@ -79,7 +79,9 @@ export function LearningIdeasPanel() {
           <div className="space-y-2">
             {result.created.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Every concept in the catalog has already been suggested — nothing new to add.
+                Every concept in the catalog has been used. Run discovery above — the learning
+                feeds (Julia Evans, ByteByteGo, Martin Fowler, freeCodeCamp) bring in fresh
+                teaching topics continuously.
               </p>
             ) : (
               <>

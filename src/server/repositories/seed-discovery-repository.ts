@@ -49,6 +49,10 @@ export class SeedDiscoveryRepository implements DiscoveryRepository {
     return [];
   }
 
+  async getTopicPendingBrief() {
+    return null;
+  }
+
   async saveBrief() {
     return;
   }

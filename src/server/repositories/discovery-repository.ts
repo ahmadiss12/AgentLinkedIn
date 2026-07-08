@@ -21,6 +21,7 @@ export interface DiscoveryRepository {
   >;
   listRecentTopics(limit: number): Promise<RecentTopic[]>;
   listTopicsPendingBrief(limit: number): Promise<TopicForBrief[]>;
+  getTopicPendingBrief(topicId: string): Promise<TopicForBrief | null>;
   saveBrief(topicId: string, brief: ResearchBrief, riskLevel: RiskLevel): Promise<void>;
   recordAgentRun(run: {
     runId: string;

@@ -43,7 +43,11 @@ export class PostgresDraftRepository implements DraftRepository {
       })
       .from(topics)
       .where(and(eq(topics.status, "brief_ready"), isNotNull(topics.brief), NO_ACTIVE_DRAFT))
-      .orderBy(desc(topics.relevanceScore))
+      // Learning topics first — evergreen teaching content is the focus.
+      .orderBy(
+        sql`CASE WHEN ${topics.type} = 'learning' THEN 0 ELSE 1 END`,
+        desc(topics.relevanceScore),
+      )
       .limit(limit);
 
     return rows

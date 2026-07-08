@@ -24,6 +24,9 @@ export const trustedSourceSchema = z.object({
   type: sourceTypeSchema,
   trustLevel: z.number().int().min(1).max(5),
   categories: z.array(topicCategorySchema).min(1),
+  // Feeds that publish evergreen teaching content produce "learning"
+  // topics; omitted means "news".
+  contentType: topicTypeSchema.optional(),
 });
 
 export const normalizedSourceItemSchema = z.object({
@@ -31,6 +34,7 @@ export const normalizedSourceItemSchema = z.object({
   sourceUrl: z.string().url(),
   sourceType: sourceTypeSchema,
   sourceTrustLevel: z.number().int().min(1).max(5),
+  contentType: topicTypeSchema,
   title: z.string().min(1),
   url: z.string().url(),
   summary: z.string().optional(),
@@ -50,6 +54,7 @@ export const discoveryCandidateSchema = z.object({
   sourceName: z.string(),
   sourceUrl: z.string().url(),
   sourceType: sourceTypeSchema,
+  contentType: topicTypeSchema,
   category: topicCategorySchema,
   publishedAt: z.date().optional(),
   fetchedAt: z.date(),

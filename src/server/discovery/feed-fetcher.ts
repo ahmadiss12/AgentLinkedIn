@@ -103,6 +103,7 @@ function normalizeFeedRecord(
     sourceUrl: source.url,
     sourceType: source.type,
     sourceTrustLevel: source.trustLevel,
+    contentType: source.contentType ?? "news",
     title: stripHtml(title),
     url: absolutizeUrl(url, source.url),
     summary: summary ? truncateWords(stripHtml(summary), 60) : undefined,
