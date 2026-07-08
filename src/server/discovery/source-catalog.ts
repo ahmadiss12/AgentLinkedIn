@@ -1,0 +1,118 @@
+import "server-only";
+
+import type { TrustedSource } from "@/core/discovery-models";
+
+export const trustedSourceCatalog: TrustedSource[] = [
+  {
+    name: "GitHub Blog",
+    url: "https://github.blog/feed/",
+    type: "engineering_blog",
+    trustLevel: 5,
+    categories: ["developer_tools", "open_source", "software_engineering"],
+  },
+  {
+    name: "GitHub Changelog",
+    url: "https://github.blog/changelog/feed/",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["developer_tools", "open_source"],
+  },
+  {
+    name: "Google AI Blog",
+    url: "https://blog.google/technology/ai/rss/",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["ai", "emerging_tech"],
+  },
+  {
+    name: "OpenAI News",
+    url: "https://openai.com/news/rss.xml",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["ai", "emerging_tech"],
+  },
+  {
+    name: "Cloudflare Blog",
+    url: "https://blog.cloudflare.com/rss/",
+    type: "engineering_blog",
+    trustLevel: 5,
+    categories: ["cloud_computing", "cybersecurity", "software_engineering"],
+  },
+  {
+    name: "AWS News Blog",
+    url: "https://aws.amazon.com/blogs/aws/feed/",
+    type: "official_blog",
+    trustLevel: 4,
+    categories: ["cloud_computing", "data_engineering", "emerging_tech"],
+  },
+  {
+    name: "Microsoft Developer Blogs",
+    url: "https://devblogs.microsoft.com/feed/",
+    type: "engineering_blog",
+    trustLevel: 4,
+    categories: ["software_engineering", "developer_tools", "cloud_computing"],
+  },
+  {
+    name: "Kubernetes Blog",
+    url: "https://kubernetes.io/feed.xml",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["cloud_computing", "open_source", "software_engineering"],
+  },
+  {
+    name: "Rust Blog",
+    url: "https://blog.rust-lang.org/feed.xml",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["programming_languages", "open_source"],
+  },
+  {
+    name: "Python Insider",
+    url: "https://blog.python.org/feeds/posts/default",
+    type: "official_blog",
+    trustLevel: 5,
+    categories: ["programming_languages", "open_source"],
+  },
+  {
+    name: "arXiv CS AI",
+    url: "https://rss.arxiv.org/rss/cs.AI",
+    type: "research_paper",
+    trustLevel: 4,
+    categories: ["ai", "computer_science"],
+  },
+  {
+    name: "arXiv Cryptography and Security",
+    url: "https://rss.arxiv.org/rss/cs.CR",
+    type: "research_paper",
+    trustLevel: 4,
+    categories: ["cybersecurity", "computer_science"],
+  },
+  {
+    name: "React Releases",
+    url: "https://github.com/facebook/react/releases.atom",
+    type: "github_release",
+    trustLevel: 5,
+    categories: ["developer_tools", "open_source", "software_engineering"],
+  },
+  {
+    name: "Next.js Releases",
+    url: "https://github.com/vercel/next.js/releases.atom",
+    type: "github_release",
+    trustLevel: 5,
+    categories: ["developer_tools", "open_source", "software_engineering"],
+  },
+  {
+    name: "Node.js Releases",
+    url: "https://github.com/nodejs/node/releases.atom",
+    type: "github_release",
+    trustLevel: 5,
+    categories: ["programming_languages", "open_source", "developer_tools"],
+  },
+  {
+    name: "This Week in Rust",
+    url: "https://this-week-in-rust.org/rss.xml",
+    type: "newsletter",
+    trustLevel: 4,
+    categories: ["programming_languages", "open_source"],
+  },
+];
