@@ -3,6 +3,8 @@ import { z } from "zod";
 import { runTopicDiscovery } from "@/server/application/topic-discovery-service";
 
 export const dynamic = "force-dynamic";
+// Fetches ~20 feeds in parallel; slow feeds need headroom.
+export const maxDuration = 60;
 
 const requestSchema = z.object({
   maxItemsPerSource: z.number().int().min(1).max(20).optional(),

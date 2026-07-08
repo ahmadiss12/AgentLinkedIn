@@ -19,6 +19,10 @@ export function getDb() {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
+      // Serverless functions each get their own pool — keep it small so
+      // many concurrent instances don't exhaust the database's
+      // connection limit (use a pooled connection string in production).
+      max: 5,
     });
   }
 

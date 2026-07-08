@@ -3,6 +3,8 @@ import { z } from "zod";
 import { runDraftGeneration } from "@/server/application/draft-generation-service";
 
 export const dynamic = "force-dynamic";
+// Each draft is a Gemini call (~10-15s); a batch needs headroom.
+export const maxDuration = 120;
 
 const requestSchema = z.object({
   maxTopics: z.number().int().min(1).max(10).optional(),

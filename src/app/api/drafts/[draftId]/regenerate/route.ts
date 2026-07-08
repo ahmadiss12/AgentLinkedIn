@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { DraftReviewService } from "@/server/application/draft-review-service";
 
 export const dynamic = "force-dynamic";
+// Regeneration is a Gemini call (~10-15s).
+export const maxDuration = 60;
 
 export async function POST(
   _request: Request,

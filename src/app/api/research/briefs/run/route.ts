@@ -3,6 +3,8 @@ import { z } from "zod";
 import { runResearchBriefs } from "@/server/application/research-brief-service";
 
 export const dynamic = "force-dynamic";
+// Each brief is a Gemini call (~10-15s); a batch of 5 needs headroom.
+export const maxDuration = 120;
 
 const requestSchema = z.object({
   maxTopics: z.number().int().min(1).max(10).optional(),
