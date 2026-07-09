@@ -3,8 +3,9 @@ import { isValidSessionToken, SESSION_COOKIE } from "@/lib/session";
 
 // Locks the whole app behind APP_PASSWORD. When the variable is not set
 // (local development), everything stays open. The cron endpoint keeps its
-// own CRON_SECRET check, and the login endpoints must stay reachable.
-const OPEN_PATHS = ["/login", "/api/auth/login", "/api/cron/"];
+// own CRON_SECRET check, and the auth endpoints must stay reachable —
+// logout only clears a cookie, so it needs no valid session.
+const OPEN_PATHS = ["/login", "/api/auth/", "/api/cron/"];
 
 export async function proxy(request: NextRequest) {
   const password = process.env.APP_PASSWORD;

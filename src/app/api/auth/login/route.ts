@@ -10,8 +10,16 @@ import {
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
-  password: z.string().min(1),
+  password: z.string().min(1).max(200),
 });
+
+// Slow down brute-force guessing: every failed attempt costs ~1 second.
+// Combined with a strong APP_PASSWORD this makes online guessing useless.
+const FAILED_ATTEMPT_DELAY_MS = 1000;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function passwordsMatch(provided: string, expected: string) {
   const providedBuffer = Buffer.from(provided);
@@ -43,6 +51,7 @@ export async function POST(request: Request) {
   }
 
   if (!passwordsMatch(body.password, appPassword)) {
+    await delay(FAILED_ATTEMPT_DELAY_MS);
     return NextResponse.json({ error: "Wrong password." }, { status: 401 });
   }
 
