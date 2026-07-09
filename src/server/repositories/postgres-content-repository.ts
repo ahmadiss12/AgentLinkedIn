@@ -1,6 +1,6 @@
 import "server-only";
 
-import { count, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull } from "drizzle-orm";
 import type { AnalyticsSummary } from "@/core/analytics-models";
 import type { QualitySignal } from "@/core/content-models";
 import type { ContentRepository } from "@/server/repositories/content-repository";
@@ -29,7 +29,7 @@ const SIGNAL_LABEL: Record<QualitySignal, string> = {
 export class PostgresContentRepository implements ContentRepository {
   constructor(private readonly db: DbClient) {}
 
-  async getDashboardSummary() {
+  async getDashboardSummary(userId: string) {
     const [
       freshTopicRows,
       needsReviewRows,
@@ -40,19 +40,21 @@ export class PostgresContentRepository implements ContentRepository {
       nextScheduledRows,
       recentWarningRows,
     ] = await Promise.all([
-      this.db.select({ count: count() }).from(topics),
+      this.db.select({ count: count() }).from(topics).where(eq(topics.userId, userId)),
       this.db
         .select({ count: count() })
         .from(drafts)
-        .where(eq(drafts.status, "needs_review")),
+        .where(and(eq(drafts.userId, userId), eq(drafts.status, "needs_review"))),
       this.db
         .select({ count: count() })
         .from(scheduledPosts)
-        .where(eq(scheduledPosts.status, "queued")),
+        .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
+        .where(and(eq(drafts.userId, userId), eq(scheduledPosts.status, "queued"))),
       this.db
         .select({ count: count() })
         .from(qualityChecks)
-        .where(isNotNull(qualityChecks.warning)),
+        .innerJoin(topics, eq(qualityChecks.topicId, topics.id))
+        .where(and(eq(topics.userId, userId), isNotNull(qualityChecks.warning))),
       this.db
         .select({
           title: topics.title,
@@ -62,6 +64,7 @@ export class PostgresContentRepository implements ContentRepository {
           status: topics.status,
         })
         .from(topics)
+        .where(eq(topics.userId, userId))
         .orderBy(desc(topics.lastSeenAt))
         .limit(3),
       this.db
@@ -72,6 +75,7 @@ export class PostgresContentRepository implements ContentRepository {
           topicId: drafts.topicId,
         })
         .from(drafts)
+        .where(eq(drafts.userId, userId))
         .orderBy(desc(drafts.updatedAt))
         .limit(3),
       this.db
@@ -81,7 +85,7 @@ export class PostgresContentRepository implements ContentRepository {
         })
         .from(scheduledPosts)
         .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
-        .where(eq(scheduledPosts.status, "queued"))
+        .where(and(eq(drafts.userId, userId), eq(scheduledPosts.status, "queued")))
         .orderBy(scheduledPosts.scheduledFor)
         .limit(1),
       this.db
@@ -91,7 +95,7 @@ export class PostgresContentRepository implements ContentRepository {
         })
         .from(qualityChecks)
         .innerJoin(topics, eq(qualityChecks.topicId, topics.id))
-        .where(isNotNull(qualityChecks.warning))
+        .where(and(eq(topics.userId, userId), isNotNull(qualityChecks.warning)))
         .orderBy(desc(qualityChecks.checkedAt))
         .limit(3),
     ]);
@@ -167,7 +171,7 @@ export class PostgresContentRepository implements ContentRepository {
     };
   }
 
-  async listReviewTimeline(limit: number) {
+  async listReviewTimeline(userId: string, limit: number) {
     return this.db
       .select({
         id: reviewEvents.id,
@@ -180,11 +184,12 @@ export class PostgresContentRepository implements ContentRepository {
       .from(reviewEvents)
       .innerJoin(drafts, eq(reviewEvents.draftId, drafts.id))
       .innerJoin(topics, eq(drafts.topicId, topics.id))
+      .where(eq(drafts.userId, userId))
       .orderBy(desc(reviewEvents.createdAt))
       .limit(limit);
   }
 
-  async listAgentRuns(limit: number) {
+  async listAgentRuns(userId: string, limit: number) {
     return this.db
       .select({
         id: agentRuns.id,
@@ -196,11 +201,12 @@ export class PostgresContentRepository implements ContentRepository {
         finishedAt: agentRuns.finishedAt,
       })
       .from(agentRuns)
+      .where(eq(agentRuns.userId, userId))
       .orderBy(desc(agentRuns.startedAt))
       .limit(limit);
   }
 
-  async listPostedHistory(limit: number) {
+  async listPostedHistory(userId: string, limit: number) {
     return this.db
       .select({
         id: publishedPosts.id,
@@ -212,11 +218,12 @@ export class PostgresContentRepository implements ContentRepository {
       })
       .from(publishedPosts)
       .innerJoin(drafts, eq(publishedPosts.draftId, drafts.id))
+      .where(eq(drafts.userId, userId))
       .orderBy(desc(publishedPosts.publishedAt))
       .limit(limit);
   }
 
-  async getAnalyticsSummary(): Promise<AnalyticsSummary> {
+  async getAnalyticsSummary(userId: string): Promise<AnalyticsSummary> {
     const [
       topicsByStatus,
       draftsByStatus,
@@ -228,30 +235,42 @@ export class PostgresContentRepository implements ContentRepository {
       this.db
         .select({ status: topics.status, count: count() })
         .from(topics)
+        .where(eq(topics.userId, userId))
         .groupBy(topics.status),
       this.db
         .select({ status: drafts.status, count: count() })
         .from(drafts)
+        .where(eq(drafts.userId, userId))
         .groupBy(drafts.status),
       this.db
         .select({ action: reviewEvents.action, count: count() })
         .from(reviewEvents)
+        .innerJoin(drafts, eq(reviewEvents.draftId, drafts.id))
+        .where(eq(drafts.userId, userId))
         .groupBy(reviewEvents.action),
       this.db
-        .select({
-          signal: sql<string>`signal_item`,
-          count: count(),
-        })
-        .from(
-          sql`${qualityChecks}, jsonb_array_elements_text(${qualityChecks.signals}) AS signal_item`,
-        )
-        .groupBy(sql`signal_item`),
-      this.db.select({ count: count() }).from(publishedPosts),
+        .select({ signals: qualityChecks.signals })
+        .from(qualityChecks)
+        .innerJoin(topics, eq(qualityChecks.topicId, topics.id))
+        .where(eq(topics.userId, userId)),
+      this.db
+        .select({ count: count() })
+        .from(publishedPosts)
+        .innerJoin(drafts, eq(publishedPosts.draftId, drafts.id))
+        .where(eq(drafts.userId, userId)),
       this.db
         .select({ status: agentRuns.status, count: count() })
         .from(agentRuns)
+        .where(eq(agentRuns.userId, userId))
         .groupBy(agentRuns.status),
     ]);
+
+    const signalCounts = new Map<string, number>();
+    for (const row of signalRows) {
+      for (const signal of row.signals) {
+        signalCounts.set(signal, (signalCounts.get(signal) ?? 0) + 1);
+      }
+    }
 
     const totalTopics = topicsByStatus.reduce((sum, row) => sum + row.count, 0);
     const totalDrafts = draftsByStatus.reduce((sum, row) => sum + row.count, 0);
@@ -276,9 +295,9 @@ export class PostgresContentRepository implements ContentRepository {
         action: row.action,
         count: row.count,
       })),
-      qualitySignals: signalRows.map((row) => ({
-        signal: row.signal,
-        count: row.count,
+      qualitySignals: Array.from(signalCounts.entries()).map(([signal, signalCount]) => ({
+        signal,
+        count: signalCount,
       })),
       totalTopics,
       totalDrafts,

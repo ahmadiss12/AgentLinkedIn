@@ -96,6 +96,9 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
+  // Nullable: legacy/local rows created before accounts existed have no
+  // password until their owner signs up and "claims" that email.
+  passwordHash: text("password_hash"),
   linkedinMemberUrn: text("linkedin_member_urn"),
   ...timestamps,
 });
@@ -183,6 +186,9 @@ export const topics = pgTable(
   "topics",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     summary: text("summary").notNull(),
@@ -203,9 +209,12 @@ export const topics = pgTable(
     ...timestamps,
   },
   (table) => ({
-    slugIdx: uniqueIndex("topics_slug_idx").on(table.slug),
+    // Slugs are only unique per user — two people can independently
+    // discover the same article and each get their own topic row.
+    userSlugIdx: uniqueIndex("topics_user_slug_idx").on(table.userId, table.slug),
     statusIdx: index("topics_status_idx").on(table.status),
     categoryIdx: index("topics_category_idx").on(table.category),
+    userIdx: index("topics_user_idx").on(table.userId),
   }),
 );
 
@@ -373,6 +382,8 @@ export const agentRuns = pgTable(
   "agent_runs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    // Nullable: pre-accounts rows have no owner; every new run sets it.
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     status: text("status").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true })
@@ -388,6 +399,7 @@ export const agentRuns = pgTable(
       table.kind,
       table.status,
     ),
+    userIdx: index("agent_runs_user_idx").on(table.userId),
   }),
 );
 
@@ -458,6 +470,7 @@ export const analyticsSnapshots = pgTable(
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   preferences: one(preferences),
+  topics: many(topics),
   drafts: many(drafts),
   reviewEvents: many(reviewEvents),
   notifications: many(notifications),
@@ -483,7 +496,8 @@ export const sourceItemsRelations = relations(sourceItems, ({ one, many }) => ({
   topicLinks: many(topicSources),
 }));
 
-export const topicsRelations = relations(topics, ({ many }) => ({
+export const topicsRelations = relations(topics, ({ many, one }) => ({
+  user: one(users, { fields: [topics.userId], references: [users.id] }),
   sourceLinks: many(topicSources),
   drafts: many(drafts),
   qualityChecks: many(qualityChecks),

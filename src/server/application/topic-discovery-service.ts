@@ -10,11 +10,7 @@ import { hasDatabaseUrl } from "@/server/db/client";
 import { FeedFetcher } from "@/server/discovery/feed-fetcher";
 import { TopicScorer } from "@/server/discovery/topic-scorer";
 import { evaluateCandidateQuality } from "@/server/quality/topic-quality-evaluator";
-import {
-  createDiscoveryRepository,
-  createDraftRepository,
-  createSettingsRepository,
-} from "@/server/repositories";
+import { createDiscoveryRepository, createSettingsRepository } from "@/server/repositories";
 
 export type RunDiscoveryOptions = {
   maxItemsPerSource?: number;
@@ -37,7 +33,7 @@ export class TopicDiscoveryService {
     };
   }
 
-  async run(options: RunDiscoveryOptions = {}): Promise<DiscoveryRunResult> {
+  async run(userId: string, options: RunDiscoveryOptions = {}): Promise<DiscoveryRunResult> {
     const startedAt = new Date();
     const maxItemsPerSource = options.maxItemsPerSource ?? 6;
     const maxCandidates = options.maxCandidates ?? 12;
@@ -69,7 +65,7 @@ export class TopicDiscoveryService {
     });
 
     const scored = this.scorer.scoreItems(items, maxCandidates);
-    const preferences = await this.loadPreferences();
+    const preferences = await this.loadPreferences(userId);
     const filtered = scored.filter((candidate) => {
       const haystack = `${candidate.title} ${candidate.summary}`.toLowerCase();
       return !preferences.blockedTopics.some((blocked) => haystack.includes(blocked));
@@ -81,7 +77,7 @@ export class TopicDiscoveryService {
       }
     }
 
-    const knownTopics = await this.repository.listKnownTopicFingerprints(200);
+    const knownTopics = await this.repository.listKnownTopicFingerprints(userId, 200);
     const candidates = evaluateCandidateQuality(filtered, knownTopics);
     const result: DiscoveryRunResult = {
       runId: randomUUID(),
@@ -95,15 +91,14 @@ export class TopicDiscoveryService {
     };
 
     if (result.persisted) {
-      await this.repository.saveRun(result);
+      await this.repository.saveRun(userId, result);
     }
 
     return result;
   }
 
-  private async loadPreferences() {
+  private async loadPreferences(userId: string) {
     try {
-      const userId = await createDraftRepository().getOrCreateDefaultUser();
       return await createSettingsRepository().getPreferences(userId);
     } catch {
       // Discovery should still work if preferences can't be loaded
@@ -117,12 +112,12 @@ export async function getDiscoveryOverview() {
   return new TopicDiscoveryService().getOverview();
 }
 
-export async function runTopicDiscovery(options?: RunDiscoveryOptions) {
-  return new TopicDiscoveryService().run(options);
+export async function runTopicDiscovery(userId: string, options?: RunDiscoveryOptions) {
+  return new TopicDiscoveryService().run(userId, options);
 }
 
-export async function listRecentTopics(limit = 30) {
-  return createDiscoveryRepository().listRecentTopics(limit);
+export async function listRecentTopics(userId: string, limit = 30) {
+  return createDiscoveryRepository().listRecentTopics(userId, limit);
 }
 
 export async function listSourceOverviews() {

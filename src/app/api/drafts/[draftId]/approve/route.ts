@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DraftReviewService } from "@/server/application/draft-review-service";
+import { getCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -7,10 +8,16 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ draftId: string }> },
 ) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const { draftId } = await params;
 
   try {
-    await new DraftReviewService().approve(draftId);
+    await new DraftReviewService().approve(userId, draftId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to approve draft.";

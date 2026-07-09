@@ -29,12 +29,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getDashboardSummary } from "@/server/application/dashboard-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const userId = await requireCurrentUserId();
   const { metrics, discoveredTopics, draftQueue, nextScheduled, recentWarnings } =
-    await getDashboardSummary();
+    await getDashboardSummary(userId);
 
   return (
     <AppShell>

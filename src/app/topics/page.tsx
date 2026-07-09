@@ -15,13 +15,15 @@ import {
   getDiscoveryOverview,
   listRecentTopics,
 } from "@/server/application/topic-discovery-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function TopicsPage() {
+  const userId = await requireCurrentUserId();
   const [overview, recentTopics] = await Promise.all([
     getDiscoveryOverview(),
-    listRecentTopics(30),
+    listRecentTopics(userId, 30),
   ]);
 
   return (

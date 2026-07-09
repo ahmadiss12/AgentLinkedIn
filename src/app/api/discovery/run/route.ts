@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runTopicDiscovery } from "@/server/application/topic-discovery-service";
+import { getCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 // Fetches ~20 feeds in parallel; slow feeds need headroom.
@@ -13,6 +14,12 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const parsed = requestSchema.safeParse(body);
 
@@ -23,7 +30,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await runTopicDiscovery(parsed.data);
+  const result = await runTopicDiscovery(userId, parsed.data);
 
   return NextResponse.json({
     ...result,

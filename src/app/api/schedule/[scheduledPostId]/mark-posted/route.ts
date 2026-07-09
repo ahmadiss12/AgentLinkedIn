@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { markScheduledPostPosted } from "@/server/application/schedule-service";
+import { getCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ scheduledPostId: string }> },
 ) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const { scheduledPostId } = await params;
   const body = await request.json().catch(() => ({}));
   const parsed = requestSchema.safeParse(body);
@@ -25,6 +32,7 @@ export async function POST(
 
   try {
     await markScheduledPostPosted(
+      userId,
       scheduledPostId,
       parsed.data.publishedUrl ? parsed.data.publishedUrl : undefined,
     );

@@ -1,27 +1,24 @@
 import "server-only";
 
 import type { Preferences, PreferencesUpdate } from "@/core/settings-models";
-import { createDraftRepository, createSettingsRepository } from "@/server/repositories";
+import { createSettingsRepository } from "@/server/repositories";
 
 export class SettingsService {
   private readonly repository = createSettingsRepository();
-  private readonly draftRepository = createDraftRepository();
 
-  async get(): Promise<Preferences> {
-    const userId = await this.draftRepository.getOrCreateDefaultUser();
+  async get(userId: string): Promise<Preferences> {
     return this.repository.getPreferences(userId);
   }
 
-  async update(update: PreferencesUpdate): Promise<Preferences> {
-    const userId = await this.draftRepository.getOrCreateDefaultUser();
+  async update(userId: string, update: PreferencesUpdate): Promise<Preferences> {
     return this.repository.updatePreferences(userId, update);
   }
 }
 
-export async function getPreferences() {
-  return new SettingsService().get();
+export async function getPreferences(userId: string) {
+  return new SettingsService().get(userId);
 }
 
-export async function updatePreferences(update: PreferencesUpdate) {
-  return new SettingsService().update(update);
+export async function updatePreferences(userId: string, update: PreferencesUpdate) {
+  return new SettingsService().update(userId, update);
 }

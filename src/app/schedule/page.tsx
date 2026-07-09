@@ -10,6 +10,7 @@ import {
   listPublishedPosts,
   listScheduledPosts,
 } from "@/server/application/schedule-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 const FLOW_STEPS = [
   "Approve a draft on the Drafts page",
@@ -21,9 +22,10 @@ const FLOW_STEPS = [
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {
+  const userId = await requireCurrentUserId();
   const [scheduled, published] = await Promise.all([
-    listScheduledPosts(30),
-    listPublishedPosts(10),
+    listScheduledPosts(userId, 30),
+    listPublishedPosts(userId, 10),
   ]);
 
   return (

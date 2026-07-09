@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ export function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
       const json = await response.json();
 
@@ -41,12 +42,23 @@ export function LoginForm() {
   return (
     <form className="space-y-4" onSubmit={submit}>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
           autoFocus
+          id="email"
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="you@example.com"
+          type="email"
+          value={email}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
           id="password"
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Your app password"
+          placeholder="Your password"
           type="password"
           value={password}
         />
@@ -59,7 +71,7 @@ export function LoginForm() {
         </p>
       ) : null}
 
-      <Button className="w-full" disabled={isSubmitting || !password} type="submit">
+      <Button className="w-full" disabled={isSubmitting || !email || !password} type="submit">
         {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
         Sign in
       </Button>

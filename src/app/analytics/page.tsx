@@ -3,6 +3,7 @@ import { PageHeading } from "@/components/page-heading";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAnalyticsSummary } from "@/server/application/dashboard-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,8 @@ function DistributionCard({
 }
 
 export default async function AnalyticsPage() {
-  const summary = await getAnalyticsSummary();
+  const userId = await requireCurrentUserId();
+  const summary = await getAnalyticsSummary(userId);
 
   const headline = [
     { label: "Topics discovered", value: summary.totalTopics },

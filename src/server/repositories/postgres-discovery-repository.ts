@@ -88,9 +88,10 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     }
   }
 
-  async saveRun(result: DiscoveryRunResult) {
+  async saveRun(userId: string, result: DiscoveryRunResult) {
     await this.db.insert(agentRuns).values({
       id: result.runId,
+      userId,
       kind: "topic_discovery",
       status: result.errors.length > 0 ? "partial_failure" : "success",
       startedAt: result.startedAt,
@@ -178,6 +179,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
       const [topic] = await this.db
         .insert(topics)
         .values({
+          userId,
           title: candidate.title,
           slug: candidate.slug,
           summary: candidate.summary,
@@ -192,7 +194,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
           lastSeenAt: candidate.fetchedAt,
         })
         .onConflictDoUpdate({
-          target: topics.slug,
+          target: [topics.userId, topics.slug],
           set: {
             // Once a topic has moved past "discovered" (e.g. an AI brief was
             // generated), rediscovery must not clobber the curated fields.
@@ -230,15 +232,16 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     }
   }
 
-  async insertLearningTopics(concepts: LearningConcept[]) {
+  async insertLearningTopics(userId: string, concepts: LearningConcept[]) {
     const created: { id: string; title: string }[] = [];
 
     for (const concept of concepts) {
-      // Slug conflict means this concept was already suggested before —
-      // skip it silently so the caller can offer fresh ideas only.
+      // Slug conflict (for this user) means this concept was already
+      // suggested to them before — skip it silently.
       const [inserted] = await this.db
         .insert(topics)
         .values({
+          userId,
           title: concept.title,
           slug: concept.slug,
           summary: concept.summary,
@@ -250,7 +253,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
           noveltyScore: 60,
           riskLevel: "low",
         })
-        .onConflictDoNothing({ target: topics.slug })
+        .onConflictDoNothing({ target: [topics.userId, topics.slug] })
         .returning({ id: topics.id, title: topics.title });
 
       if (inserted) {
@@ -261,16 +264,16 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     return created;
   }
 
-  async listUsedLearningSlugs(): Promise<string[]> {
+  async listUsedLearningSlugs(userId: string): Promise<string[]> {
     const rows = await this.db
       .select({ slug: topics.slug })
       .from(topics)
-      .where(eq(topics.type, "learning"));
+      .where(and(eq(topics.userId, userId), eq(topics.type, "learning")));
 
     return rows.map((row) => row.slug);
   }
 
-  async listKnownTopicFingerprints(limit: number) {
+  async listKnownTopicFingerprints(userId: string, limit: number) {
     return this.db
       .select({
         slug: topics.slug,
@@ -278,11 +281,12 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         summary: topics.summary,
       })
       .from(topics)
+      .where(eq(topics.userId, userId))
       .orderBy(desc(topics.lastSeenAt))
       .limit(limit);
   }
 
-  async listRecentTopics(limit: number): Promise<RecentTopic[]> {
+  async listRecentTopics(userId: string, limit: number): Promise<RecentTopic[]> {
     const rows = await this.db
       .select({
         id: topics.id,
@@ -297,6 +301,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         lastSeenAt: topics.lastSeenAt,
       })
       .from(topics)
+      .where(eq(topics.userId, userId))
       .orderBy(desc(topics.lastSeenAt))
       .limit(limit);
 
@@ -334,7 +339,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     }));
   }
 
-  async listTopicsPendingBrief(limit: number): Promise<TopicForBrief[]> {
+  async listTopicsPendingBrief(userId: string, limit: number): Promise<TopicForBrief[]> {
     const staleCutoff = new Date(Date.now() - STALE_AFTER_DAYS * 86_400_000);
     const rows = await this.db
       .select({
@@ -350,6 +355,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
       .from(topics)
       .where(
         and(
+          eq(topics.userId, userId),
           eq(topics.status, "discovered"),
           // Relevance and staleness gates only apply to news — learning
           // topics are evergreen and always brief-worthy.
@@ -428,7 +434,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
     }));
   }
 
-  async getTopicPendingBrief(topicId: string): Promise<TopicForBrief | null> {
+  async getTopicPendingBrief(userId: string, topicId: string): Promise<TopicForBrief | null> {
     const [row] = await this.db
       .select({
         id: topics.id,
@@ -441,7 +447,9 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
         lastSeenAt: topics.lastSeenAt,
       })
       .from(topics)
-      .where(and(eq(topics.id, topicId), eq(topics.status, "discovered")))
+      .where(
+        and(eq(topics.id, topicId), eq(topics.userId, userId), eq(topics.status, "discovered")),
+      )
       .limit(1);
 
     if (!row) {
@@ -509,6 +517,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
 
   async recordAgentRun(run: {
     runId: string;
+    userId: string;
     kind: string;
     status: string;
     startedAt: Date;
@@ -519,6 +528,7 @@ export class PostgresDiscoveryRepository implements DiscoveryRepository {
   }) {
     await this.db.insert(agentRuns).values({
       id: run.runId,
+      userId: run.userId,
       kind: run.kind,
       status: run.status,
       startedAt: run.startedAt,

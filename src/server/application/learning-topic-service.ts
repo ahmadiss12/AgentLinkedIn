@@ -2,11 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { learningConceptCatalog } from "@/server/discovery/learning-catalog";
-import {
-  createDiscoveryRepository,
-  createDraftRepository,
-  createSettingsRepository,
-} from "@/server/repositories";
+import { createDiscoveryRepository, createSettingsRepository } from "@/server/repositories";
 
 export type LearningSuggestResult = {
   created: { id: string; title: string }[];
@@ -16,10 +12,10 @@ export type LearningSuggestResult = {
 export class LearningTopicService {
   private readonly repository = createDiscoveryRepository();
 
-  async suggest(count = 3): Promise<LearningSuggestResult> {
+  async suggest(userId: string, count = 3): Promise<LearningSuggestResult> {
     const startedAt = new Date();
-    const usedSlugs = new Set(await this.repository.listUsedLearningSlugs());
-    const blockedTopics = await this.loadBlockedTopics();
+    const usedSlugs = new Set(await this.repository.listUsedLearningSlugs(userId));
+    const blockedTopics = await this.loadBlockedTopics(userId);
     const unused = learningConceptCatalog.filter((concept) => {
       if (usedSlugs.has(concept.slug)) {
         return false;
@@ -32,10 +28,12 @@ export class LearningTopicService {
     // Shuffle so consecutive clicks don't always surface the same concepts.
     const shuffled = [...unused].sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, count);
-    const created = picked.length > 0 ? await this.repository.insertLearningTopics(picked) : [];
+    const created =
+      picked.length > 0 ? await this.repository.insertLearningTopics(userId, picked) : [];
 
     await this.repository.recordAgentRun({
       runId: randomUUID(),
+      userId,
       kind: "learning_topics",
       status: "success",
       startedAt,
@@ -53,9 +51,8 @@ export class LearningTopicService {
     };
   }
 
-  private async loadBlockedTopics(): Promise<string[]> {
+  private async loadBlockedTopics(userId: string): Promise<string[]> {
     try {
-      const userId = await createDraftRepository().getOrCreateDefaultUser();
       const preferences = await createSettingsRepository().getPreferences(userId);
       return preferences.blockedTopics;
     } catch {
@@ -65,6 +62,6 @@ export class LearningTopicService {
   }
 }
 
-export async function suggestLearningTopics(count = 3) {
-  return new LearningTopicService().suggest(count);
+export async function suggestLearningTopics(userId: string, count = 3) {
+  return new LearningTopicService().suggest(userId, count);
 }

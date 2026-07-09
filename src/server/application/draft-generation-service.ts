@@ -32,7 +32,7 @@ export class DraftGenerationService {
   private readonly repository = createDraftRepository();
   private readonly generator = new DraftGenerator();
 
-  async run(options: RunDraftsOptions = {}): Promise<DraftRunResult> {
+  async run(userId: string, options: RunDraftsOptions = {}): Promise<DraftRunResult> {
     const startedAt = new Date();
     const maxTopics = options.maxTopics ?? 5;
 
@@ -52,22 +52,21 @@ export class DraftGenerationService {
     let candidates: TopicForDraft[];
 
     if (options.topicId) {
-      const topic = await this.repository.getTopicForDraft(options.topicId);
+      const topic = await this.repository.getTopicForDraft(userId, options.topicId);
       candidates = topic ? [topic] : [];
 
       if (!topic) {
         result.errors.push({
           topicId: options.topicId,
           title: options.topicId,
-          message: "Topic is not eligible for drafting (not brief-ready, or an active draft already exists).",
+          message: "Topic is not eligible for drafting (not brief-ready, not yours, or an active draft already exists).",
         });
       }
     } else {
-      candidates = await this.repository.listTopicsPendingDraft(maxTopics);
+      candidates = await this.repository.listTopicsPendingDraft(userId, maxTopics);
     }
 
     if (candidates.length > 0) {
-      const userId = await this.repository.getOrCreateDefaultUser();
       const style = await createSettingsRepository().getPreferences(userId);
 
       for (const topic of candidates) {
@@ -103,6 +102,7 @@ export class DraftGenerationService {
 
     await this.repository.recordAgentRun({
       runId: result.runId,
+      userId,
       kind: "draft_generation",
       status: result.errors.length > 0 ? "partial_failure" : "success",
       startedAt: result.startedAt,
@@ -123,6 +123,6 @@ export class DraftGenerationService {
   }
 }
 
-export async function runDraftGeneration(options?: RunDraftsOptions) {
-  return new DraftGenerationService().run(options);
+export async function runDraftGeneration(userId: string, options?: RunDraftsOptions) {
+  return new DraftGenerationService().run(userId, options);
 }

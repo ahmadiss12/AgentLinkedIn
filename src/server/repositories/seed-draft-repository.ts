@@ -3,16 +3,16 @@ import "server-only";
 import type { DraftRepository } from "@/server/repositories/draft-repository";
 
 export class SeedDraftRepository implements DraftRepository {
+  async listAllUserIds() {
+    return [];
+  }
+
   async listTopicsPendingDraft() {
     return [];
   }
 
   async getTopicForDraft() {
     return null;
-  }
-
-  async getOrCreateDefaultUser() {
-    return "seed-user";
   }
 
   async saveDraft() {

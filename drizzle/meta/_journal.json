@@ -29,6 +29,27 @@
       "when": 1783520471241,
       "tag": "0003_even_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783611756261,
+      "tag": "0004_soft_enchantress",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783611756262,
+      "tag": "0005_backfill_topic_owner",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783611800558,
+      "tag": "0006_slimy_mystique",
+      "breakpoints": true
     }
   ]
 }

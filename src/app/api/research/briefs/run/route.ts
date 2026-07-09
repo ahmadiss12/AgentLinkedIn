@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runResearchBriefs } from "@/server/application/research-brief-service";
+import { getCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 // Each brief is a Gemini call (~10-15s); a batch of 5 needs headroom.
@@ -12,6 +13,12 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const parsed = requestSchema.safeParse(body);
 
@@ -23,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runResearchBriefs(parsed.data);
+    const result = await runResearchBriefs(userId, parsed.data);
 
     return NextResponse.json({
       ...result,

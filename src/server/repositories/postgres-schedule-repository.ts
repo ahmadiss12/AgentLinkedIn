@@ -22,7 +22,7 @@ type Tx = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
 export class PostgresScheduleRepository implements ScheduleRepository {
   constructor(private readonly db: DbClient) {}
 
-  async listApprovedDrafts(limit: number): Promise<ApprovedDraft[]> {
+  async listApprovedDrafts(userId: string, limit: number): Promise<ApprovedDraft[]> {
     return this.db
       .select({
         id: drafts.id,
@@ -36,12 +36,12 @@ export class PostgresScheduleRepository implements ScheduleRepository {
       })
       .from(drafts)
       .innerJoin(topics, eq(drafts.topicId, topics.id))
-      .where(eq(drafts.status, "approved"))
+      .where(and(eq(drafts.userId, userId), eq(drafts.status, "approved")))
       .orderBy(desc(drafts.updatedAt))
       .limit(limit);
   }
 
-  async listScheduledPosts(limit: number): Promise<ScheduledPostView[]> {
+  async listScheduledPosts(userId: string, limit: number): Promise<ScheduledPostView[]> {
     return this.db
       .select({
         id: scheduledPosts.id,
@@ -57,12 +57,18 @@ export class PostgresScheduleRepository implements ScheduleRepository {
       })
       .from(scheduledPosts)
       .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
-      .where(and(ne(scheduledPosts.status, "posted"), ne(scheduledPosts.status, "cancelled")))
+      .where(
+        and(
+          eq(drafts.userId, userId),
+          ne(scheduledPosts.status, "posted"),
+          ne(scheduledPosts.status, "cancelled"),
+        ),
+      )
       .orderBy(scheduledPosts.scheduledFor)
       .limit(limit);
   }
 
-  async listPublishedPosts(limit: number): Promise<PublishedPostView[]> {
+  async listPublishedPosts(userId: string, limit: number): Promise<PublishedPostView[]> {
     return this.db
       .select({
         id: publishedPosts.id,
@@ -74,6 +80,7 @@ export class PostgresScheduleRepository implements ScheduleRepository {
       })
       .from(publishedPosts)
       .innerJoin(drafts, eq(publishedPosts.draftId, drafts.id))
+      .where(eq(drafts.userId, userId))
       .orderBy(desc(publishedPosts.publishedAt))
       .limit(limit);
   }
@@ -83,7 +90,8 @@ export class PostgresScheduleRepository implements ScheduleRepository {
       const [draftRow] = await tx
         .select({ status: drafts.status, topicId: drafts.topicId })
         .from(drafts)
-        .where(eq(drafts.id, draftId))
+        // Ownership check: only the draft's own owner can schedule it.
+        .where(and(eq(drafts.id, draftId), eq(drafts.userId, userId)))
         .limit(1);
 
       if (!draftRow) {
@@ -122,12 +130,17 @@ export class PostgresScheduleRepository implements ScheduleRepository {
   async cancelScheduledPost(scheduledPostId: string, userId: string) {
     await this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ draftId: scheduledPosts.draftId, status: scheduledPosts.status })
+        .select({
+          draftId: scheduledPosts.draftId,
+          status: scheduledPosts.status,
+          draftOwnerId: drafts.userId,
+        })
         .from(scheduledPosts)
+        .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
         .where(eq(scheduledPosts.id, scheduledPostId))
         .limit(1);
 
-      if (!row) {
+      if (!row || row.draftOwnerId !== userId) {
         throw new Error("Scheduled post not found.");
       }
 
@@ -165,12 +178,17 @@ export class PostgresScheduleRepository implements ScheduleRepository {
   async markPosted(scheduledPostId: string, userId: string, publishedUrl?: string) {
     await this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ draftId: scheduledPosts.draftId, status: scheduledPosts.status })
+        .select({
+          draftId: scheduledPosts.draftId,
+          status: scheduledPosts.status,
+          draftOwnerId: drafts.userId,
+        })
         .from(scheduledPosts)
+        .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
         .where(eq(scheduledPosts.id, scheduledPostId))
         .limit(1);
 
-      if (!row) {
+      if (!row || row.draftOwnerId !== userId) {
         throw new Error("Scheduled post not found.");
       }
 

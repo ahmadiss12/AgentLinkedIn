@@ -1,47 +1,47 @@
 import "server-only";
 
-import { createDraftRepository, createScheduleRepository } from "@/server/repositories";
+import { createScheduleRepository } from "@/server/repositories";
 
 export class ScheduleService {
   private readonly repository = createScheduleRepository();
-  private readonly draftRepository = createDraftRepository();
 
-  async schedule(draftId: string, scheduledFor: Date) {
-    const userId = await this.draftRepository.getOrCreateDefaultUser();
+  async schedule(userId: string, draftId: string, scheduledFor: Date) {
     await this.repository.scheduleDraft(draftId, userId, scheduledFor);
   }
 
-  async cancel(scheduledPostId: string) {
-    const userId = await this.draftRepository.getOrCreateDefaultUser();
+  async cancel(userId: string, scheduledPostId: string) {
     await this.repository.cancelScheduledPost(scheduledPostId, userId);
   }
 
-  async markPosted(scheduledPostId: string, publishedUrl?: string) {
-    const userId = await this.draftRepository.getOrCreateDefaultUser();
+  async markPosted(userId: string, scheduledPostId: string, publishedUrl?: string) {
     await this.repository.markPosted(scheduledPostId, userId, publishedUrl);
   }
 }
 
-export async function listApprovedDrafts(limit = 20) {
-  return createScheduleRepository().listApprovedDrafts(limit);
+export async function listApprovedDrafts(userId: string, limit = 20) {
+  return createScheduleRepository().listApprovedDrafts(userId, limit);
 }
 
-export async function listScheduledPosts(limit = 20) {
-  return createScheduleRepository().listScheduledPosts(limit);
+export async function listScheduledPosts(userId: string, limit = 20) {
+  return createScheduleRepository().listScheduledPosts(userId, limit);
 }
 
-export async function listPublishedPosts(limit = 10) {
-  return createScheduleRepository().listPublishedPosts(limit);
+export async function listPublishedPosts(userId: string, limit = 10) {
+  return createScheduleRepository().listPublishedPosts(userId, limit);
 }
 
-export async function scheduleDraft(draftId: string, scheduledFor: Date) {
-  return new ScheduleService().schedule(draftId, scheduledFor);
+export async function scheduleDraft(userId: string, draftId: string, scheduledFor: Date) {
+  return new ScheduleService().schedule(userId, draftId, scheduledFor);
 }
 
-export async function cancelScheduledPost(scheduledPostId: string) {
-  return new ScheduleService().cancel(scheduledPostId);
+export async function cancelScheduledPost(userId: string, scheduledPostId: string) {
+  return new ScheduleService().cancel(userId, scheduledPostId);
 }
 
-export async function markScheduledPostPosted(scheduledPostId: string, publishedUrl?: string) {
-  return new ScheduleService().markPosted(scheduledPostId, publishedUrl);
+export async function markScheduledPostPosted(
+  userId: string,
+  scheduledPostId: string,
+  publishedUrl?: string,
+) {
+  return new ScheduleService().markPosted(userId, scheduledPostId, publishedUrl);
 }

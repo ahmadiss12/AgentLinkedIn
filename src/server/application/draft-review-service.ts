@@ -9,8 +9,8 @@ export class DraftReviewService {
   private readonly repository = createDraftRepository();
   private readonly generator = new DraftGenerator();
 
-  async approve(draftId: string) {
-    const existing = await this.repository.getDraftWithTopic(draftId);
+  async approve(userId: string, draftId: string) {
+    const existing = await this.repository.getDraftWithTopic(userId, draftId);
 
     if (!existing) {
       throw new Error("Draft not found.");
@@ -20,12 +20,11 @@ export class DraftReviewService {
       throw new Error(`Cannot approve a draft with status "${existing.draft.status}".`);
     }
 
-    const userId = await this.repository.getOrCreateDefaultUser();
     await this.repository.approveDraft(draftId, userId);
   }
 
-  async reject(draftId: string, note?: string) {
-    const existing = await this.repository.getDraftWithTopic(draftId);
+  async reject(userId: string, draftId: string, note?: string) {
+    const existing = await this.repository.getDraftWithTopic(userId, draftId);
 
     if (!existing) {
       throw new Error("Draft not found.");
@@ -35,12 +34,11 @@ export class DraftReviewService {
       throw new Error(`Cannot reject a draft with status "${existing.draft.status}".`);
     }
 
-    const userId = await this.repository.getOrCreateDefaultUser();
     await this.repository.rejectDraft(draftId, userId, note);
   }
 
-  async edit(draftId: string, edit: DraftEdit) {
-    const existing = await this.repository.getDraftWithTopic(draftId);
+  async edit(userId: string, draftId: string, edit: DraftEdit) {
+    const existing = await this.repository.getDraftWithTopic(userId, draftId);
 
     if (!existing) {
       throw new Error("Draft not found.");
@@ -50,16 +48,15 @@ export class DraftReviewService {
       throw new Error(`Cannot edit a draft with status "${existing.draft.status}".`);
     }
 
-    const userId = await this.repository.getOrCreateDefaultUser();
     await this.repository.editDraft(draftId, userId, edit);
   }
 
-  async regenerate(draftId: string): Promise<LinkedinDraft> {
+  async regenerate(userId: string, draftId: string): Promise<LinkedinDraft> {
     if (!hasGeminiKey()) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
 
-    const existing = await this.repository.getDraftWithTopic(draftId);
+    const existing = await this.repository.getDraftWithTopic(userId, draftId);
 
     if (!existing) {
       throw new Error("Draft not found.");
@@ -69,7 +66,6 @@ export class DraftReviewService {
       throw new Error(`Cannot regenerate a draft with status "${existing.draft.status}".`);
     }
 
-    const userId = await this.repository.getOrCreateDefaultUser();
     const style = await createSettingsRepository().getPreferences(userId);
     const draft = await this.generator.generate(existing.topic, {
       avoidAngle: existing.draft.angle,
@@ -81,10 +77,10 @@ export class DraftReviewService {
   }
 }
 
-export async function listTopicsReadyToDraft(limit = 20) {
-  return createDraftRepository().listTopicsPendingDraft(limit);
+export async function listTopicsReadyToDraft(userId: string, limit = 20) {
+  return createDraftRepository().listTopicsPendingDraft(userId, limit);
 }
 
-export async function listDraftsForReview(limit = 30) {
-  return createDraftRepository().listDraftsForReview(limit);
+export async function listDraftsForReview(userId: string, limit = 30) {
+  return createDraftRepository().listDraftsForReview(userId, limit);
 }

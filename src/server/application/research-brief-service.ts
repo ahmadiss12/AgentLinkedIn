@@ -37,7 +37,7 @@ export class ResearchBriefService {
   private readonly repository = createDiscoveryRepository();
   private readonly generator = new ResearchBriefGenerator();
 
-  async run(options: RunBriefsOptions = {}): Promise<BriefRunResult> {
+  async run(userId: string, options: RunBriefsOptions = {}): Promise<BriefRunResult> {
     const startedAt = new Date();
     const maxTopics = options.maxTopics ?? 5;
 
@@ -57,18 +57,18 @@ export class ResearchBriefService {
     let candidates;
 
     if (options.topicId) {
-      const topic = await this.repository.getTopicPendingBrief(options.topicId);
+      const topic = await this.repository.getTopicPendingBrief(userId, options.topicId);
       candidates = topic ? [topic] : [];
 
       if (!topic) {
         result.errors.push({
           topicId: options.topicId,
           title: options.topicId,
-          message: "Topic is not waiting for a brief (already briefed, or not found).",
+          message: "Topic is not waiting for a brief (already briefed, not yours, or not found).",
         });
       }
     } else {
-      candidates = await this.repository.listTopicsPendingBrief(maxTopics);
+      candidates = await this.repository.listTopicsPendingBrief(userId, maxTopics);
     }
 
     for (const topic of candidates) {
@@ -96,6 +96,7 @@ export class ResearchBriefService {
 
     await this.repository.recordAgentRun({
       runId: result.runId,
+      userId,
       kind: "research_brief",
       status: result.errors.length > 0 ? "partial_failure" : "success",
       startedAt: result.startedAt,
@@ -116,6 +117,6 @@ export class ResearchBriefService {
   }
 }
 
-export async function runResearchBriefs(options?: RunBriefsOptions) {
-  return new ResearchBriefService().run(options);
+export async function runResearchBriefs(userId: string, options?: RunBriefsOptions) {
+  return new ResearchBriefService().run(userId, options);
 }

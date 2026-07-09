@@ -1,7 +1,10 @@
-// Session token helpers shared by the login route (Node) and the
-// middleware (Edge). Uses Web Crypto so it runs in both runtimes.
+// Session token helpers shared by auth routes (Node), current-user lookup
+// (Node, via next/headers), and the proxy gate (Edge). Uses Web Crypto so
+// it runs identically in every runtime.
 //
-// Token format: "<expiresAtMs>.<hmacSha256Hex>" signed with APP_PASSWORD.
+// Token format: "<userId>.<expiresAtMs>.<hmacSha256Hex>" signed with
+// AUTH_SECRET. userId is a UUID (no "." characters), so splitting on "."
+// into exactly 3 parts is safe.
 
 export const SESSION_COOKIE = "agentlinkedin_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -22,22 +25,32 @@ async function hmacHex(message: string, key: string) {
     .join("");
 }
 
-export async function createSessionToken(password: string) {
+export async function createSessionToken(userId: string, secret: string) {
   const expiresAt = Date.now() + SESSION_MAX_AGE_SECONDS * 1000;
-  const signature = await hmacHex(`agentlinkedin:${expiresAt}`, password);
+  const payload = `${userId}.${expiresAt}`;
+  const signature = await hmacHex(payload, secret);
 
-  return `${expiresAt}.${signature}`;
+  return `${payload}.${signature}`;
 }
 
-export async function isValidSessionToken(token: string, password: string) {
-  const [expiresAtRaw, signature] = token.split(".");
-  const expiresAt = Number(expiresAtRaw);
+export async function verifySessionToken(
+  token: string,
+  secret: string,
+): Promise<{ userId: string } | null> {
+  const parts = token.split(".");
 
-  if (!expiresAtRaw || !signature || Number.isNaN(expiresAt) || expiresAt < Date.now()) {
-    return false;
+  if (parts.length !== 3) {
+    return null;
   }
 
-  const expected = await hmacHex(`agentlinkedin:${expiresAt}`, password);
+  const [userId, expiresAtRaw, signature] = parts;
+  const expiresAt = Number(expiresAtRaw);
 
-  return signature === expected;
+  if (!userId || !signature || Number.isNaN(expiresAt) || expiresAt < Date.now()) {
+    return null;
+  }
+
+  const expected = await hmacHex(`${userId}.${expiresAt}`, secret);
+
+  return signature === expected ? { userId } : null;
 }

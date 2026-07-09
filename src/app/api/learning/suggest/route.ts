@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { suggestLearningTopics } from "@/server/application/learning-topic-service";
+import { getCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   let count = 3;
 
   try {
@@ -25,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await suggestLearningTopics(count);
+    const result = await suggestLearningTopics(userId, count);
     return NextResponse.json(result);
   } catch (error) {
     const message =

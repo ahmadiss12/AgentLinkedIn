@@ -21,8 +21,6 @@ import type { DraftRepository } from "@/server/repositories/draft-repository";
 type DbClient = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
 
-const DEFAULT_USER_EMAIL = "local@agentlinkedin.app";
-
 const NO_ACTIVE_DRAFT = sql`NOT EXISTS (
   SELECT 1 FROM ${drafts} d
   WHERE d.topic_id = ${topics.id} AND d.status != 'rejected'
@@ -31,7 +29,12 @@ const NO_ACTIVE_DRAFT = sql`NOT EXISTS (
 export class PostgresDraftRepository implements DraftRepository {
   constructor(private readonly db: DbClient) {}
 
-  async listTopicsPendingDraft(limit: number): Promise<TopicForDraft[]> {
+  async listAllUserIds(): Promise<string[]> {
+    const rows = await this.db.select({ id: users.id }).from(users);
+    return rows.map((row) => row.id);
+  }
+
+  async listTopicsPendingDraft(userId: string, limit: number): Promise<TopicForDraft[]> {
     const rows = await this.db
       .select({
         id: topics.id,
@@ -42,7 +45,14 @@ export class PostgresDraftRepository implements DraftRepository {
         brief: topics.brief,
       })
       .from(topics)
-      .where(and(eq(topics.status, "brief_ready"), isNotNull(topics.brief), NO_ACTIVE_DRAFT))
+      .where(
+        and(
+          eq(topics.userId, userId),
+          eq(topics.status, "brief_ready"),
+          isNotNull(topics.brief),
+          NO_ACTIVE_DRAFT,
+        ),
+      )
       // Learning topics first — evergreen teaching content is the focus.
       .orderBy(
         sql`CASE WHEN ${topics.type} = 'learning' THEN 0 ELSE 1 END`,
@@ -62,7 +72,7 @@ export class PostgresDraftRepository implements DraftRepository {
       }));
   }
 
-  async getTopicForDraft(topicId: string): Promise<TopicForDraft | null> {
+  async getTopicForDraft(userId: string, topicId: string): Promise<TopicForDraft | null> {
     const [row] = await this.db
       .select({
         id: topics.id,
@@ -76,6 +86,7 @@ export class PostgresDraftRepository implements DraftRepository {
       .where(
         and(
           eq(topics.id, topicId),
+          eq(topics.userId, userId),
           eq(topics.status, "brief_ready"),
           isNotNull(topics.brief),
           NO_ACTIVE_DRAFT,
@@ -95,25 +106,6 @@ export class PostgresDraftRepository implements DraftRepository {
       type: row.type,
       brief: row.brief,
     };
-  }
-
-  async getOrCreateDefaultUser() {
-    const [existing] = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, DEFAULT_USER_EMAIL))
-      .limit(1);
-
-    if (existing) {
-      return existing.id;
-    }
-
-    const [created] = await this.db
-      .insert(users)
-      .values({ email: DEFAULT_USER_EMAIL, name: "Local User" })
-      .returning({ id: users.id });
-
-    return created!.id;
   }
 
   async saveDraft(topicId: string, userId: string, draft: LinkedinDraft) {
@@ -149,7 +141,7 @@ export class PostgresDraftRepository implements DraftRepository {
       .where(eq(topics.id, topicId));
   }
 
-  async listDraftsForReview(limit: number): Promise<DraftForReview[]> {
+  async listDraftsForReview(userId: string, limit: number): Promise<DraftForReview[]> {
     const rows = await this.db
       .select({
         id: drafts.id,
@@ -168,13 +160,14 @@ export class PostgresDraftRepository implements DraftRepository {
       })
       .from(drafts)
       .innerJoin(topics, eq(drafts.topicId, topics.id))
+      .where(eq(drafts.userId, userId))
       .orderBy(desc(drafts.updatedAt))
       .limit(limit);
 
     return rows;
   }
 
-  async getDraftWithTopic(draftId: string) {
+  async getDraftWithTopic(userId: string, draftId: string) {
     const [row] = await this.db
       .select({
         draft: {
@@ -198,7 +191,10 @@ export class PostgresDraftRepository implements DraftRepository {
       })
       .from(drafts)
       .innerJoin(topics, eq(drafts.topicId, topics.id))
-      .where(eq(drafts.id, draftId))
+      // The userId filter here is the ownership check: a session for one
+      // user can never fetch, and therefore never act on, another user's
+      // draft — even by guessing its UUID.
+      .where(and(eq(drafts.id, draftId), eq(drafts.userId, userId)))
       .limit(1);
 
     if (!row || row.topicBrief === null) {
@@ -288,6 +284,7 @@ export class PostgresDraftRepository implements DraftRepository {
 
   async recordAgentRun(run: {
     runId: string;
+    userId: string;
     kind: string;
     status: string;
     startedAt: Date;
@@ -298,6 +295,7 @@ export class PostgresDraftRepository implements DraftRepository {
   }) {
     await this.db.insert(agentRuns).values({
       id: run.runId,
+      userId: run.userId,
       kind: run.kind,
       status: run.status,
       startedAt: run.startedAt,

@@ -1,28 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isValidSessionToken, SESSION_COOKIE } from "@/lib/session";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
-// Locks the whole app behind APP_PASSWORD. When the variable is not set
-// (local development), everything stays open. The cron endpoint keeps its
-// own CRON_SECRET check, and the auth endpoints must stay reachable —
-// logout only clears a cookie, so it needs no valid session.
-const OPEN_PATHS = ["/login", "/api/auth/", "/api/cron/"];
+// Every page and API route requires a signed-in user. The auth endpoints
+// and static assets must stay reachable so the login/signup flow itself
+// can run, and the cron endpoint keeps its own separate CRON_SECRET check.
+const OPEN_PATHS = ["/login", "/signup", "/api/auth/", "/api/cron/"];
 
 export async function proxy(request: NextRequest) {
-  const password = process.env.APP_PASSWORD;
-
-  if (!password) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
 
   if (OPEN_PATHS.some((path) => pathname === path || pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
+  const secret = process.env.AUTH_SECRET;
   const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = secret && token ? await verifySessionToken(token, secret) : null;
 
-  if (token && (await isValidSessionToken(token, password))) {
+  if (session) {
     return NextResponse.next();
   }
 

@@ -19,6 +19,7 @@ import {
   listPostedHistory,
   listReviewTimeline,
 } from "@/server/application/dashboard-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,11 @@ const RUN_KIND_LABEL: Record<string, string> = {
 };
 
 export default async function HistoryPage() {
+  const userId = await requireCurrentUserId();
   const [timeline, runs, posted] = await Promise.all([
-    listReviewTimeline(50),
-    listAgentRuns(30),
-    listPostedHistory(20),
+    listReviewTimeline(userId, 50),
+    listAgentRuns(userId, 30),
+    listPostedHistory(userId, 20),
   ]);
 
   return (

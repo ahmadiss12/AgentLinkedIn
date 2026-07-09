@@ -7,13 +7,15 @@ import {
   listDraftsForReview,
   listTopicsReadyToDraft,
 } from "@/server/application/draft-review-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function DraftsPage() {
+  const userId = await requireCurrentUserId();
   const [topics, drafts] = await Promise.all([
-    listTopicsReadyToDraft(20),
-    listDraftsForReview(30),
+    listTopicsReadyToDraft(userId, 20),
+    listDraftsForReview(userId, 30),
   ]);
 
   return (

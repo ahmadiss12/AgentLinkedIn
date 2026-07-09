@@ -6,8 +6,11 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getCurrentUserEmail } from "@/server/auth/current-user";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export async function AppShell({ children }: { children: ReactNode }) {
+  const email = await getCurrentUserEmail();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-sidebar/80 px-5 py-5 lg:block">
@@ -43,14 +46,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="hidden sm:inline-flex" variant="outline">
-              Manual publishing
-            </Badge>
+            {email ? (
+              <Badge className="hidden sm:inline-flex" variant="outline">
+                {email}
+              </Badge>
+            ) : null}
             <Badge className="hidden sm:inline-flex" variant="secondary">
               Approval required
             </Badge>
             <NotificationsBell />
-            {process.env.APP_PASSWORD ? <LogoutButton /> : null}
+            <LogoutButton />
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 lg:px-8">

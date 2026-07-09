@@ -2,11 +2,13 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
 import { SettingsForm } from "@/components/settings-form";
 import { getPreferences } from "@/server/application/settings-service";
+import { requireCurrentUserId } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const preferences = await getPreferences();
+  const userId = await requireCurrentUserId();
+  const preferences = await getPreferences(userId);
 
   return (
     <AppShell>

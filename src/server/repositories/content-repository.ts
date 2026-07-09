@@ -9,9 +9,9 @@ import type {
 } from "@/core/history-models";
 
 export interface ContentRepository {
-  getDashboardSummary(): Promise<DashboardSummary>;
-  listReviewTimeline(limit: number): Promise<ReviewTimelineItem[]>;
-  listAgentRuns(limit: number): Promise<AgentRunView[]>;
-  listPostedHistory(limit: number): Promise<PostedHistoryItem[]>;
-  getAnalyticsSummary(): Promise<AnalyticsSummary>;
+  getDashboardSummary(userId: string): Promise<DashboardSummary>;
+  listReviewTimeline(userId: string, limit: number): Promise<ReviewTimelineItem[]>;
+  listAgentRuns(userId: string, limit: number): Promise<AgentRunView[]>;
+  listPostedHistory(userId: string, limit: number): Promise<PostedHistoryItem[]>;
+  getAnalyticsSummary(userId: string): Promise<AnalyticsSummary>;
 }
