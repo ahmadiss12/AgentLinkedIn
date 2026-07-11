@@ -22,6 +22,10 @@ export class PostgresNotificationRepository implements NotificationRepository {
       .innerJoin(drafts, eq(scheduledPosts.draftId, drafts.id))
       .where(
         and(
+          // Only this user's due posts — without this filter, whichever
+          // user's bell polls first would claim the notification (and the
+          // unique (kind, ref_id) index would then block the real owner's).
+          eq(drafts.userId, userId),
           eq(scheduledPosts.status, "queued"),
           lte(scheduledPosts.scheduledFor, new Date()),
         ),

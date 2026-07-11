@@ -66,9 +66,12 @@ export class TopicDiscoveryService {
 
     const scored = this.scorer.scoreItems(items, maxCandidates);
     const preferences = await this.loadPreferences(userId);
+    const blockedTerms = preferences.blockedTopics
+      .map((blocked) => blocked.trim().toLowerCase())
+      .filter(Boolean);
     const filtered = scored.filter((candidate) => {
       const haystack = `${candidate.title} ${candidate.summary}`.toLowerCase();
-      return !preferences.blockedTopics.some((blocked) => haystack.includes(blocked));
+      return !blockedTerms.some((blocked) => haystack.includes(blocked));
     });
 
     for (const candidate of filtered) {

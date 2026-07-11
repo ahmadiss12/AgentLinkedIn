@@ -27,7 +27,7 @@ Every page and API route requires a signed-in account — there is no "open" mod
 
 ## 3. Content pipeline
 
-**Discovery** (`src/server/discovery/`): fetches ~20 trusted RSS/Atom feeds in parallel (official blogs, GitHub releases, research feeds, and dedicated "learning" feeds like Julia Evans / Martin Fowler / ByteByteGo / freeCodeCamp), scores each item for relevance/novelty/category, filters duplicates and topics you've blocked in Settings, and reserves at least half the results for "learning" (evergreen) content so fresh news can't crowd it out entirely.
+**Discovery** (`src/server/discovery/`): fetches ~20 trusted RSS/Atom feeds in parallel (official blogs, GitHub releases, research feeds, and dedicated "learning" feeds like Julia Evans / Martin Fowler / ByteByteGo / freeCodeCamp), scores each item for relevance/novelty/category, filters duplicates and topics you've blocked in Settings, and reserves at least half the results for "learning" (evergreen) content so fresh news can't crowd it out entirely. Scoring is rule-based (no AI call): weighted keywords matched on word boundaries (title hits count double), a bonus for release/version signals, penalties for promotional/clickbait phrasing, no age penalty for evergreen learning content, and near-identical items from different feeds collapsed into the highest-ranked copy. Category is re-inferred from the strongest keyword match rather than locked to the feed's default.
 
 **Two content types**:
 - **News** — time-sensitive developments from feeds; briefs are strictly source-grounded (every claim must trace back to a real article) and go stale after 21 days.

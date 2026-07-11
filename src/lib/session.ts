@@ -52,5 +52,21 @@ export async function verifySessionToken(
 
   const expected = await hmacHex(`${userId}.${expiresAt}`, secret);
 
-  return signature === expected ? { userId } : null;
+  return timingSafeEqualString(signature, expected) ? { userId } : null;
+}
+
+// Constant-time comparison (works on Edge and Node runtimes alike) so the
+// signature check doesn't leak how many leading characters matched.
+function timingSafeEqualString(left: string, right: string) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  let diff = 0;
+
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+
+  return diff === 0;
 }
